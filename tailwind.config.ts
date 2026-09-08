@@ -11,6 +11,10 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        miirtus: {
+          green: "#24483F",
+          "green-dark": "#1c3a33",
+        },
       },
     },
   },
