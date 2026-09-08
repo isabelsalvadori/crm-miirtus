@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Leaf } from "lucide-react";
 import { isActive, navGroups } from "./nav";
 
 type SidebarProps = {
@@ -17,9 +17,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     <div className="flex h-full w-60 flex-col bg-[#24483F]">
       {/* Logo */}
       <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#E3BD62] text-[#24483F]">
-          <Leaf className="h-5 w-5" strokeWidth={2.25} />
-        </span>
+        <Image
+          src="/images/monograma.png"
+          alt="MIIRTUS"
+          width={36}
+          height={36}
+          priority
+          className="shrink-0"
+        />
         <span className="text-base font-bold tracking-tight text-white">
           MIIRTUS OS
         </span>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useFormState, useFormStatus } from "react-dom";
 import { login, type LoginState } from "./actions";
 
@@ -26,7 +27,15 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#24483F] px-4 py-10">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-[#24483F]">
+          <Image
+            src="/images/monograma.png"
+            alt="MIIRTUS"
+            width={64}
+            height={64}
+            priority
+            className="mx-auto"
+          />
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#24483F]">
             MIIRTUS OS
           </h1>
           <p className="mt-1 text-sm text-gray-500">Acesso restrito</p>
