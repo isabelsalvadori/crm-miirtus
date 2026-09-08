@@ -23,7 +23,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           width={36}
           height={36}
           priority
-          className="shrink-0"
+          className="shrink-0 rounded-full bg-white p-0.5"
         />
         <span className="text-base font-bold tracking-tight text-white">
           MIIRTUS OS
