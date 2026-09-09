@@ -12,10 +12,10 @@ import {
 } from "../actions";
 
 const PRIORIDADE_BADGE: Record<string, string> = {
-  baixa: "bg-black/5 text-gray-500",
-  normal: "bg-black/5 text-gray-600",
-  alta: "bg-[#E3BD62]/25 text-[#2D3230]",
-  urgente: "bg-[#B97059]/15 text-[#B97059]",
+  baixa: "bg-gray-50 text-gray-400",
+  normal: "bg-gray-100 text-gray-600",
+  alta: "bg-amber-100 text-amber-700",
+  urgente: "bg-red-100 text-red-700",
 };
 
 const PRIORIDADE_LABEL: Record<string, string> = {
@@ -77,7 +77,7 @@ function Secao({
       {itens.length === 0 ? (
         <p className="mt-3 text-sm text-gray-400">{vazio ?? "Nada por aqui."}</p>
       ) : (
-        <ul className="mt-2 space-y-0.5">{children}</ul>
+        <ul className="mt-3 space-y-2">{children}</ul>
       )}
     </section>
   );
@@ -115,7 +115,7 @@ function TarefaRow({
 
   return (
     <li
-      className={`flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-black/[0.03] ${
+      className={`flex items-center gap-3 rounded-xl border border-[#2D3230]/10 bg-white p-4 shadow-sm transition-all duration-150 hover:border-[#24483F]/30 ${
         concluida ? "opacity-50" : ""
       }`}
     >
@@ -143,25 +143,27 @@ function TarefaRow({
         {tarefa.titulo}
       </Link>
 
-      {tarefa.prioridade && (
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-            PRIORIDADE_BADGE[tarefa.prioridade] ?? "bg-black/5 text-gray-600"
-          }`}
-        >
-          {PRIORIDADE_LABEL[tarefa.prioridade] ?? tarefa.prioridade}
-        </span>
-      )}
+      <div className="flex shrink-0 items-center gap-2">
+        {tarefa.prioridade && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              PRIORIDADE_BADGE[tarefa.prioridade] ?? "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {PRIORIDADE_LABEL[tarefa.prioridade] ?? tarefa.prioridade}
+          </span>
+        )}
 
-      {modo === "prazo" && tarefa.data_prazo && (
-        <span
-          className={`shrink-0 text-xs ${
-            atrasada ? "font-semibold text-red-600" : "text-gray-400"
-          }`}
-        >
-          {formatDataCurta(tarefa.data_prazo)}
-        </span>
-      )}
+        {modo === "prazo" && tarefa.data_prazo && (
+          <span
+            className={`text-xs tabular-nums ${
+              atrasada ? "font-semibold text-red-600" : "text-gray-400"
+            }`}
+          >
+            {formatDataCurta(tarefa.data_prazo)}
+          </span>
+        )}
+      </div>
     </li>
   );
 }
