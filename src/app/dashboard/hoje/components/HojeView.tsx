@@ -8,8 +8,11 @@ import { QuickNoteModal } from "@/app/dashboard/notas/components/QuickNoteModal"
 import {
   marcarTarefaConcluida,
   type NotaHoje,
+  type OptionLite,
+  type TagLite,
   type TarefaHoje,
 } from "../actions";
+import { TarefaModal } from "./TarefaModal";
 
 const PRIORIDADE_BADGE: Record<string, string> = {
   baixa: "bg-gray-50 text-gray-400",
@@ -59,20 +62,25 @@ function Secao({
   vazio,
   itens,
   danger,
+  acao,
   children,
 }: {
   titulo: string;
   vazio?: string;
   itens: unknown[];
   danger?: boolean;
+  acao?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className={danger ? "rounded-xl border border-red-200 bg-red-50/50 p-4" : undefined}>
       <div
-        className={`pb-2 ${danger ? "border-b border-red-200" : "border-b border-black/10"}`}
+        className={`flex items-center justify-between gap-3 pb-2 ${
+          danger ? "border-b border-red-200" : "border-b border-black/10"
+        }`}
       >
         <SecaoTitulo tone={danger ? "danger" : undefined}>{titulo}</SecaoTitulo>
+        {acao}
       </div>
       {itens.length === 0 ? (
         <p className="mt-3 text-sm text-gray-400">{vazio ?? "Nada por aqui."}</p>
@@ -198,6 +206,10 @@ type Props = {
   prioridades: TarefaHoje[];
   aguardando: TarefaHoje[];
   notas: NotaHoje[];
+  projetos: OptionLite[];
+  produtos: OptionLite[];
+  tags: TagLite[];
+  temProdutoCol: boolean;
 };
 
 export function HojeView({
@@ -209,9 +221,14 @@ export function HojeView({
   prioridades,
   aguardando,
   notas,
+  projetos,
+  produtos,
+  tags,
+  temProdutoCol,
 }: Props) {
   const router = useRouter();
   const [quickAberto, setQuickAberto] = useState(false);
+  const [tarefaAberta, setTarefaAberta] = useState(false);
 
   function fecharQuick() {
     setQuickAberto(false);
@@ -238,6 +255,15 @@ export function HojeView({
         titulo="Tarefas de hoje"
         vazio="Nenhuma tarefa com prazo hoje"
         itens={prazoHoje}
+        acao={
+          <button
+            type="button"
+            onClick={() => setTarefaAberta(true)}
+            className="rounded-lg border border-[#24483F]/30 bg-white px-2.5 py-1 text-xs font-semibold text-[#24483F] transition-colors hover:bg-[#24483F]/5"
+          >
+            + Nova tarefa
+          </button>
+        }
       >
         {prazoHoje.map((t) => (
           <TarefaRow key={t.id} tarefa={t} modo="prazo" />
@@ -299,6 +325,15 @@ export function HojeView({
       </section>
 
       {quickAberto && <QuickNoteModal onClose={fecharQuick} />}
+      {tarefaAberta && (
+        <TarefaModal
+          projetos={projetos}
+          produtos={produtos}
+          tags={tags}
+          temProdutoCol={temProdutoCol}
+          onClose={() => setTarefaAberta(false)}
+        />
+      )}
     </div>
   );
 }

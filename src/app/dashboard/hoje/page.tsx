@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { detectTarefaColumns } from "../tarefas/db";
-import type { NotaHoje, TarefaHoje } from "./actions";
+import type { NotaHoje, OptionLite, TagLite, TarefaHoje } from "./actions";
 import { HojeView } from "./components/HojeView";
 
 const TZ = "America/Sao_Paulo";
@@ -104,6 +104,9 @@ export default async function HojePage() {
     prioritariasRes,
     aguardandoRes,
     notasRes,
+    projetosRes,
+    produtosRes,
+    tagsRes,
   ] = await Promise.all([
     tarefasHojeQuery,
     base()
@@ -131,6 +134,17 @@ export default async function HojePage() {
       .gte("created_at", inicioHoje)
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("projetos")
+      .select("id, nome")
+      .is("arquivado_em", null)
+      .order("nome"),
+    supabase
+      .from("produtos")
+      .select("id, nome")
+      .is("arquivado_em", null)
+      .order("nome"),
+    supabase.from("tags").select("id, nome, cor").order("nome"),
   ]);
 
   const erro =
@@ -165,6 +179,10 @@ export default async function HojePage() {
           prioridades={toLista(prioritariasRes)}
           aguardando={toLista(aguardandoRes)}
           notas={(notasRes.data ?? []) as NotaHoje[]}
+          projetos={(projetosRes.data ?? []) as OptionLite[]}
+          produtos={(produtosRes.data ?? []) as OptionLite[]}
+          tags={(tagsRes.data ?? []) as TagLite[]}
+          temProdutoCol={cols.has("produto_id")}
         />
       )}
     </div>
