@@ -183,6 +183,12 @@ create table if not exists edicoes_evento (
   vagas_preenchidas integer not null default 0,
   data_inicio timestamptz,
   data_fim timestamptz,
+  -- campos do módulo de Eventos (migração 0007)
+  -- modelo_acesso: 'gratuito' | 'pago'
+  modelo_acesso text,
+  preco numeric(12,2),
+  projeto_id uuid references projetos (id) on delete set null,
+  resumo text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   arquivado_em timestamptz
@@ -587,6 +593,7 @@ create index if not exists idx_versoes_produto_produto on versoes_produto (produ
 create index if not exists idx_projetos_responsavel on projetos (responsavel_id);
 create index if not exists idx_fases_projeto_projeto on fases_projeto (projeto_id);
 create index if not exists idx_edicoes_evento_evento on edicoes_evento (evento_id);
+create index if not exists idx_edicoes_evento_projeto on edicoes_evento (projeto_id);
 create index if not exists idx_tarefas_parent on tarefas (parent_id);
 create index if not exists idx_tarefas_projeto on tarefas (projeto_id);
 create index if not exists idx_tarefas_produto on tarefas (produto_id);
