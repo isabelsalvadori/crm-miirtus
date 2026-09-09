@@ -29,6 +29,23 @@ type ParsedInput = {
   descricao: string | null;
 };
 
+/** Monta uma mensagem legível a partir do erro do Supabase/PostgREST. */
+function describeDbError(
+  error: {
+    message?: string;
+    details?: string | null;
+    hint?: string | null;
+    code?: string | null;
+  } | null,
+): string {
+  if (!error) return "Erro desconhecido ao salvar (sem retorno do banco).";
+  const parts = [error.message, error.details, error.hint].filter(
+    (p): p is string => Boolean(p),
+  );
+  const code = error.code ? ` [${error.code}]` : "";
+  return `${parts.join(" — ")}${code}`;
+}
+
 function parseAndValidate(
   formData: FormData,
 ):
@@ -125,11 +142,8 @@ export async function createProduto(
     .single();
 
   if (error || !data) {
-    console.error("[createProduto] falha no insert:", error);
-    return {
-      ok: false,
-      error: "Não foi possível salvar o produto. Tente novamente.",
-    };
+    console.error("Erro ao criar produto:", error);
+    return { ok: false, error: describeDbError(error) };
   }
 
   revalidatePath("/dashboard/produtos");
@@ -157,11 +171,8 @@ export async function updateProduto(
     .eq("id", id);
 
   if (error) {
-    console.error("[updateProduto] falha no update:", error);
-    return {
-      ok: false,
-      error: "Não foi possível salvar as alterações. Tente novamente.",
-    };
+    console.error("Erro ao editar produto:", error);
+    return { ok: false, error: describeDbError(error) };
   }
 
   revalidatePath("/dashboard/produtos");
