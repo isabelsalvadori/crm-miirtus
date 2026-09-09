@@ -96,7 +96,7 @@ export function TagInput({
           </button>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2.5 grid grid-cols-8 gap-2">
           {TAG_COLORS.map((c) => (
             <button
               key={c}
@@ -104,23 +104,24 @@ export function TagInput({
               onClick={() => setCor(c)}
               aria-label={`Cor ${c}`}
               aria-pressed={cor === c}
-              className={`h-6 w-6 rounded-full transition ${
+              className={`h-7 w-7 rounded-full transition ${
                 cor === c
-                  ? "ring-2 ring-gray-900 ring-offset-1"
-                  : "ring-1 ring-black/10"
+                  ? "border-2 border-white shadow-[0_0_0_2px_#111827]"
+                  : "border border-black/10"
               }`}
               style={{ backgroundColor: c }}
             />
           ))}
-          {preview && (
-            <span
-              className="ml-1 rounded-full px-2 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: cor, color: tagTextColor(cor) }}
-            >
-              {preview}
-            </span>
-          )}
         </div>
+
+        {preview && (
+          <span
+            className="mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: cor, color: tagTextColor(cor) }}
+          >
+            {preview}
+          </span>
+        )}
       </div>
     </div>
   );

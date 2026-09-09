@@ -94,7 +94,7 @@ export function TarefaModal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative flex max-h-[90vh] w-full max-w-[680px] flex-col rounded-xl bg-white shadow-xl transition-all duration-200 ${
+        className={`relative flex max-h-[90vh] w-full max-w-[860px] flex-col rounded-xl bg-white shadow-xl transition-all duration-200 ${
           show ? "scale-100 opacity-100" : "scale-95 opacity-0"
         }`}
       >
