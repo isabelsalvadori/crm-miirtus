@@ -196,13 +196,19 @@ create table if not exists tarefas (
   id uuid primary key default gen_random_uuid(),
   titulo text not null,
   descricao text,
-  -- status: 'pendente' | 'em_andamento' | 'concluida' | 'cancelada'
+  observacoes text,
+  -- status: 'a_fazer' | 'em_andamento' | 'aguardando' | 'concluida'
   status text,
+  -- prioridade: 'baixa' | 'normal' | 'alta' | 'urgente'
   prioridade text,
   parent_id uuid references tarefas (id) on delete cascade,
   projeto_id uuid references projetos (id) on delete set null,
+  produto_id uuid references produtos (id) on delete set null,
   fase_id uuid references fases_projeto (id) on delete set null,
   responsavel_id uuid references pessoas (id) on delete set null,
+  na_agenda boolean not null default false,
+  agenda_inicio timestamptz,
+  agenda_fim timestamptz,
   ordem integer not null default 0,
   estimativa_horas numeric(6,2),
   data_prazo timestamptz,
@@ -574,6 +580,7 @@ create index if not exists idx_fases_projeto_projeto on fases_projeto (projeto_i
 create index if not exists idx_edicoes_evento_evento on edicoes_evento (evento_id);
 create index if not exists idx_tarefas_parent on tarefas (parent_id);
 create index if not exists idx_tarefas_projeto on tarefas (projeto_id);
+create index if not exists idx_tarefas_produto on tarefas (produto_id);
 create index if not exists idx_tarefas_fase on tarefas (fase_id);
 create index if not exists idx_tarefas_responsavel on tarefas (responsavel_id);
 create index if not exists idx_notas_entidade on notas (entidade_tipo, entidade_id);
