@@ -13,6 +13,9 @@ const initialState: FormState = {};
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400";
 
+const triggerClass =
+  "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors";
+
 function ConfirmSubmit({
   label,
   disabled,
@@ -32,88 +35,100 @@ function ConfirmSubmit({
     <button
       type="submit"
       disabled={disabled || pending}
-      className={`mt-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${toneClass}`}
+      className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${toneClass}`}
     >
       {pending ? "Processando..." : label}
     </button>
   );
 }
 
-function ArquivarBlock({ clienteId }: { clienteId: string }) {
-  const [state, formAction] = useFormState(arquivarCliente, initialState);
+type BlockProps = {
+  clienteId: string;
+  action: (prevState: FormState, formData: FormData) => Promise<FormState>;
+  triggerLabel: string;
+  confirmWord: string;
+  description: string;
+  tone: "amber" | "red";
+  fieldId: string;
+};
+
+function DangerBlock({
+  clienteId,
+  action,
+  triggerLabel,
+  confirmWord,
+  description,
+  tone,
+  fieldId,
+}: BlockProps) {
+  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [state, formAction] = useFormState(action, initialState);
+
+  const toneClass =
+    tone === "red"
+      ? "border-red-300 text-red-700 hover:bg-red-50"
+      : "border-amber-300 text-amber-700 hover:bg-amber-50";
+
+  function toggle() {
+    setOpen((prev) => {
+      if (prev) setText("");
+      return !prev;
+    });
+  }
 
   return (
-    <form action={formAction}>
-      <p className="text-sm font-medium text-gray-600">Arquivar</p>
-      <p className="mt-0.5 text-xs text-gray-400">
-        Some da listagem; os dados são mantidos.
-      </p>
-
-      <input type="hidden" name="id" value={clienteId} />
-
-      <label
-        htmlFor="confirmacao-arquivar"
-        className="mt-2 block text-xs text-gray-400"
+    <div>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className={`${triggerClass} ${toneClass}`}
       >
-        Digite ARQUIVAR para confirmar
-      </label>
-      <input
-        id="confirmacao-arquivar"
-        name="confirmacao"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        autoComplete="off"
-        className={inputClass}
-      />
+        {triggerLabel}
+      </button>
 
-      {state.error && <p className="mt-1 text-xs text-red-600">{state.error}</p>}
+      {open && (
+        <form action={formAction} className="mt-2">
+          <input type="hidden" name="id" value={clienteId} />
+          <p className="text-xs text-gray-400">{description}</p>
 
-      <ConfirmSubmit
-        label="Arquivar"
-        tone="amber"
-        disabled={text !== "ARQUIVAR"}
-      />
-    </form>
-  );
-}
+          <label htmlFor={fieldId} className="mt-2 block text-xs text-gray-400">
+            Digite {confirmWord} para confirmar
+          </label>
+          <input
+            id={fieldId}
+            name="confirmacao"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            autoComplete="off"
+            className={inputClass}
+          />
 
-function ExcluirBlock({ clienteId }: { clienteId: string }) {
-  const [state, formAction] = useFormState(excluirCliente, initialState);
-  const [text, setText] = useState("");
+          {state.error && (
+            <p className="mt-1 text-xs text-red-600">{state.error}</p>
+          )}
 
-  return (
-    <form action={formAction}>
-      <p className="text-sm font-medium text-gray-600">Excluir</p>
-      <p className="mt-0.5 text-xs text-gray-400">
-        Remoção permanente deste cliente.
-      </p>
-
-      <input type="hidden" name="id" value={clienteId} />
-
-      <label
-        htmlFor="confirmacao-excluir"
-        className="mt-2 block text-xs text-gray-400"
-      >
-        Digite EXCLUIR para confirmar
-      </label>
-      <input
-        id="confirmacao-excluir"
-        name="confirmacao"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        autoComplete="off"
-        className={inputClass}
-      />
-
-      {state.error && <p className="mt-1 text-xs text-red-600">{state.error}</p>}
-
-      <ConfirmSubmit
-        label="Excluir"
-        tone="red"
-        disabled={text !== "EXCLUIR"}
-      />
-    </form>
+          <div className="mt-2 flex items-center gap-3">
+            <ConfirmSubmit
+              label={triggerLabel}
+              tone={tone}
+              disabled={text !== confirmWord}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setText("");
+              }}
+              className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -127,9 +142,27 @@ export function DangerActions({
   return (
     <section className="border-t border-gray-200 pt-6">
       <h3 className="text-xs text-gray-400">Ações</h3>
-      <div className="mt-4 grid gap-6 sm:grid-cols-2">
-        {!arquivado && <ArquivarBlock clienteId={clienteId} />}
-        <ExcluirBlock clienteId={clienteId} />
+      <div className="mt-4 grid items-start gap-6 sm:grid-cols-2">
+        {!arquivado && (
+          <DangerBlock
+            clienteId={clienteId}
+            action={arquivarCliente}
+            triggerLabel="Arquivar"
+            confirmWord="ARQUIVAR"
+            description="Some da listagem; os dados são mantidos."
+            tone="amber"
+            fieldId="confirmacao-arquivar"
+          />
+        )}
+        <DangerBlock
+          clienteId={clienteId}
+          action={excluirCliente}
+          triggerLabel="Excluir"
+          confirmWord="EXCLUIR"
+          description="Remoção permanente deste cliente."
+          tone="red"
+          fieldId="confirmacao-excluir"
+        />
       </div>
     </section>
   );
