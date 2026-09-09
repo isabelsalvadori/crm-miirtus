@@ -9,7 +9,12 @@ import {
   updateTarefa,
   type FormState,
 } from "../actions";
-import { formatPrazo, isVencido, prioridadeLabel } from "../constants";
+import {
+  formatPrazo,
+  isVencido,
+  prioridadeLabel,
+  toTimeInputValue,
+} from "../constants";
 import type {
   OptionLite,
   SubtarefaItem,
@@ -18,7 +23,7 @@ import type {
 } from "../types";
 import { PriorityFlag, StatusBadge, TagBadge } from "./badges";
 import { DangerActions } from "./danger-actions";
-import { TarefaFormFields, type TarefaCaps } from "./tarefa-form-fields";
+import { TarefaFormFields } from "./tarefa-form-fields";
 import { useMergeHref } from "./use-merge-href";
 
 const initialState: FormState = {};
@@ -30,7 +35,6 @@ type Props = {
   produtos: OptionLite[];
   projetos: OptionLite[];
   tags: TagLite[];
-  caps: TarefaCaps;
   defaultStatus?: string;
 };
 
@@ -41,12 +45,11 @@ export function TarefaModal({
   produtos,
   projetos,
   tags,
-  caps,
   defaultStatus,
 }: Props) {
   const router = useRouter();
   const mergeHref = useMergeHref();
-  const closeHref = mergeHref({ tarefa: null, nova: null, ok: null });
+  const closeHref = mergeHref({ tarefa: null, nova: null, col: null, ok: null });
 
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -65,7 +68,7 @@ export function TarefaModal({
 
   function close() {
     setClosing(true);
-    setTimeout(() => router.push(closeHref, { scroll: false }), 180);
+    setTimeout(() => router.push(closeHref, { scroll: false }), 160);
   }
 
   useEffect(() => {
@@ -80,22 +83,22 @@ export function TarefaModal({
   const show = mounted && !closing;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div
         aria-hidden
         onClick={close}
-        className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${
+        className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${
           show ? "opacity-100" : "opacity-0"
         }`}
       />
       <div
         role="dialog"
         aria-modal="true"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-lg flex-col bg-white shadow-xl transition-transform duration-200 ${
-          show ? "translate-x-0" : "translate-x-full"
+        className={`relative flex max-h-[90vh] w-full max-w-[680px] flex-col rounded-xl bg-white shadow-xl transition-all duration-200 ${
+          show ? "scale-100 opacity-100" : "scale-95 opacity-0"
         }`}
       >
-        <header className="flex items-center justify-between border-b border-black/5 px-5 py-3">
+        <header className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 py-3">
           <h2 className="text-sm font-semibold text-gray-900">
             {mode === "create"
               ? "Nova tarefa"
@@ -121,11 +124,8 @@ export function TarefaModal({
               produtos={produtos}
               projetos={projetos}
               tags={tags}
-              caps={caps}
               defaultStatus={defaultStatus}
-              onCancel={
-                mode === "create" ? close : () => setEditing(false)
-              }
+              onCancel={mode === "create" ? close : () => setEditing(false)}
             />
           ) : (
             tarefa && (
@@ -161,7 +161,6 @@ function EditForm({
   produtos,
   projetos,
   tags,
-  caps,
   defaultStatus,
   onCancel,
 }: {
@@ -170,7 +169,6 @@ function EditForm({
   produtos: OptionLite[];
   projetos: OptionLite[];
   tags: TagLite[];
-  caps: TarefaCaps;
   defaultStatus?: string;
   onCancel: () => void;
 }) {
@@ -197,7 +195,6 @@ function EditForm({
         produtos={produtos}
         projetos={projetos}
         tags={tags}
-        caps={caps}
         defaultStatus={defaultStatus}
         fieldErrors={state.fieldErrors}
       />
@@ -226,6 +223,19 @@ function ViewTarefa({
   onEdit: () => void;
 }) {
   const vencido = isVencido(tarefa.data_prazo, tarefa.status);
+  const agenda =
+    tarefa.agenda_data &&
+    [
+      formatPrazo(tarefa.agenda_data),
+      [
+        toTimeInputValue(tarefa.agenda_hora_inicio),
+        toTimeInputValue(tarefa.agenda_hora_fim),
+      ]
+        .filter(Boolean)
+        .join("–"),
+    ]
+      .filter(Boolean)
+      .join(" ");
 
   return (
     <div className="space-y-5">
@@ -273,6 +283,14 @@ function ViewTarefa({
               : "Sem vínculo"}
           </dd>
         </div>
+        {agenda && (
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-gray-500">
+              Agenda
+            </dt>
+            <dd className="mt-0.5 text-sm text-gray-800">{agenda}</dd>
+          </div>
+        )}
       </dl>
 
       {tarefa.observacoes && (

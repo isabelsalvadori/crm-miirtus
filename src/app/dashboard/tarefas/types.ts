@@ -27,9 +27,9 @@ export type TarefaFull = {
   data_conclusao: string | null;
   projeto_id: string | null;
   produto_id: string | null;
-  na_agenda: boolean | null;
-  agenda_inicio: string | null;
-  agenda_fim: string | null;
+  agenda_data: string | null;
+  agenda_hora_inicio: string | null;
+  agenda_hora_fim: string | null;
   tags: TagLite[];
   contexto: ContextoLink;
 };

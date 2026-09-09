@@ -11,9 +11,9 @@ export const TAREFA_BASE_COLUMNS =
 export const EXT_COLUMN_CANDIDATES = [
   "observacoes",
   "produto_id",
-  "na_agenda",
-  "agenda_inicio",
-  "agenda_fim",
+  "agenda_data",
+  "agenda_hora_inicio",
+  "agenda_hora_fim",
 ] as const;
 
 export type ExtColumn = (typeof EXT_COLUMN_CANDIDATES)[number];

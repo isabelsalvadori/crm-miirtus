@@ -5,7 +5,7 @@ import {
   PRIORIDADE_OPTIONS,
   STATUS_OPTIONS,
   toDateInputValue,
-  toDateTimeLocalValue,
+  toTimeInputValue,
 } from "../constants";
 import type { OptionLite, SubtarefaItem, TagLite, TarefaFull } from "../types";
 import { TagInput, type DraftTag } from "./tag-input";
@@ -16,19 +16,12 @@ const fieldClass =
 const labelClass = "block text-sm font-medium text-gray-700";
 const errorClass = "mt-1 text-xs text-red-600";
 
-export type TarefaCaps = {
-  agenda: boolean;
-  observacoes: boolean;
-  produto: boolean;
-};
-
 export function TarefaFormFields({
   tarefa,
   subtarefas,
   produtos,
   projetos,
   tags,
-  caps,
   defaultStatus,
   fieldErrors,
 }: {
@@ -37,7 +30,6 @@ export function TarefaFormFields({
   produtos: OptionLite[];
   projetos: OptionLite[];
   tags: TagLite[];
-  caps: TarefaCaps;
   defaultStatus?: string;
   fieldErrors?: Record<string, string>;
 }) {
@@ -45,7 +37,7 @@ export function TarefaFormFields({
     (tarefa?.tags ?? []).map((t) => ({
       id: t.id,
       nome: t.nome,
-      cor: t.cor ?? "#e5e7eb",
+      cor: t.cor ?? "#6B7280",
     })),
   );
   const [draftSubs, setDraftSubs] = useState<DraftSubtarefa[]>(
@@ -55,7 +47,7 @@ export function TarefaFormFields({
       concluida: s.status === "concluida",
     })),
   );
-  const [naAgenda, setNaAgenda] = useState(Boolean(tarefa?.na_agenda));
+  const [naAgenda, setNaAgenda] = useState(Boolean(tarefa?.agenda_data));
 
   return (
     <div className="space-y-4">
@@ -152,42 +144,52 @@ export function TarefaFormFields({
             name="na_agenda"
             checked={naAgenda}
             onChange={(event) => setNaAgenda(event.target.checked)}
-            disabled={!caps.agenda}
             className="h-4 w-4 rounded border-gray-300 text-[#24483F] focus:ring-[#24483F]"
           />
           Adicionar à agenda
         </label>
-        {!caps.agenda && (
-          <p className="mt-1 text-xs text-gray-400">
-            Disponível após aplicar a migração 0003.
-          </p>
-        )}
-        {caps.agenda && naAgenda && (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+
+        {naAgenda && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div>
-              <label htmlFor="agenda_inicio" className="text-xs text-gray-500">
-                Início
+              <label htmlFor="agenda_data" className="text-xs text-gray-500">
+                Data
               </label>
               <input
-                id="agenda_inicio"
-                name="agenda_inicio"
-                type="datetime-local"
-                defaultValue={toDateTimeLocalValue(tarefa?.agenda_inicio)}
+                id="agenda_data"
+                name="agenda_data"
+                type="date"
+                defaultValue={toDateInputValue(tarefa?.agenda_data)}
                 className={fieldClass}
               />
-              {fieldErrors?.agenda_inicio && (
-                <p className={errorClass}>{fieldErrors.agenda_inicio}</p>
+              {fieldErrors?.agenda_data && (
+                <p className={errorClass}>{fieldErrors.agenda_data}</p>
               )}
             </div>
             <div>
-              <label htmlFor="agenda_fim" className="text-xs text-gray-500">
-                Fim
+              <label
+                htmlFor="agenda_hora_inicio"
+                className="text-xs text-gray-500"
+              >
+                Hora início
               </label>
               <input
-                id="agenda_fim"
-                name="agenda_fim"
-                type="datetime-local"
-                defaultValue={toDateTimeLocalValue(tarefa?.agenda_fim)}
+                id="agenda_hora_inicio"
+                name="agenda_hora_inicio"
+                type="time"
+                defaultValue={toTimeInputValue(tarefa?.agenda_hora_inicio)}
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="agenda_hora_fim" className="text-xs text-gray-500">
+                Hora fim
+              </label>
+              <input
+                id="agenda_hora_fim"
+                name="agenda_hora_fim"
+                type="time"
+                defaultValue={toTimeInputValue(tarefa?.agenda_hora_fim)}
                 className={fieldClass}
               />
             </div>
@@ -204,7 +206,6 @@ export function TarefaFormFields({
             id="produto_id"
             name="produto_id"
             defaultValue={tarefa?.produto_id ?? ""}
-            disabled={!caps.produto}
             className={fieldClass}
           >
             <option value="">Nenhum</option>
@@ -251,14 +252,8 @@ export function TarefaFormFields({
           name="observacoes"
           rows={2}
           defaultValue={tarefa?.observacoes ?? ""}
-          disabled={!caps.observacoes}
           className={fieldClass}
         />
-        {!caps.observacoes && (
-          <p className="mt-1 text-xs text-gray-400">
-            Disponível após aplicar a migração 0003 (coluna observacoes).
-          </p>
-        )}
       </div>
 
       <div>

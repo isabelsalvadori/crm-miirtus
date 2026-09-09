@@ -39,11 +39,7 @@ export default async function TarefasPage({
 }) {
   const supabase = createClient();
   const cols = await detectTarefaColumns(supabase);
-  const caps = {
-    agenda: cols.has("na_agenda"),
-    observacoes: cols.has("observacoes"),
-    produto: cols.has("produto_id"),
-  };
+  const hasProdutoCol = cols.has("produto_id");
 
   const rawQuery = (searchParams.q ?? "").trim();
   const search = sanitizeSearch(rawQuery);
@@ -88,8 +84,8 @@ export default async function TarefasPage({
   if (prioridade) query = query.eq("prioridade", prioridade);
   if (contexto === "sem_vinculo") {
     query = query.is("projeto_id", null);
-    if (caps.produto) query = query.is("produto_id", null);
-  } else if (contexto.startsWith("produto:") && caps.produto) {
+    if (hasProdutoCol) query = query.is("produto_id", null);
+  } else if (contexto.startsWith("produto:") && hasProdutoCol) {
     query = query.eq("produto_id", contexto.slice("produto:".length));
   } else if (contexto.startsWith("projeto:")) {
     query = query.eq("projeto_id", contexto.slice("projeto:".length));
@@ -160,9 +156,9 @@ export default async function TarefasPage({
         data_conclusao: (r.data_conclusao as string | null) ?? null,
         projeto_id: (r.projeto_id as string | null) ?? null,
         produto_id: (r.produto_id as string | null) ?? null,
-        na_agenda: (r.na_agenda as boolean | null) ?? null,
-        agenda_inicio: (r.agenda_inicio as string | null) ?? null,
-        agenda_fim: (r.agenda_fim as string | null) ?? null,
+        agenda_data: (r.agenda_data as string | null) ?? null,
+        agenda_hora_inicio: (r.agenda_hora_inicio as string | null) ?? null,
+        agenda_hora_fim: (r.agenda_hora_fim as string | null) ?? null,
         tags: flattenTags(row as never),
         contexto: contextoDe(r as never),
       };
@@ -223,7 +219,6 @@ export default async function TarefasPage({
           produtos={produtos}
           projetos={projetos}
           tags={tags}
-          caps={caps}
           defaultStatus={defaultStatus}
         />
       )}

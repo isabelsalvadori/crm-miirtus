@@ -18,38 +18,40 @@ export function TagInput({
   const [text, setText] = useState("");
   const [cor, setCor] = useState(TAG_COLORS[0]);
 
-  function add() {
+  function handleAdd() {
     const nome = text.trim();
     if (!nome) return;
-    if (value.some((t) => t.nome.toLowerCase() === nome.toLowerCase())) {
+
+    const jaTem = value.some(
+      (t) => t.nome.toLowerCase() === nome.toLowerCase(),
+    );
+    if (jaTem) {
       setText("");
       return;
     }
-    const existing = allTags.find(
+
+    const existente = allTags.find(
       (t) => t.nome.toLowerCase() === nome.toLowerCase(),
     );
-    const next: DraftTag = existing
-      ? {
-          id: existing.id,
-          nome: existing.nome,
-          cor: existing.cor ?? cor,
-        }
+    const nova: DraftTag = existente
+      ? { id: existente.id, nome: existente.nome, cor: existente.cor ?? cor }
       : { nome, cor };
-    onChange([...value, next]);
+
+    onChange([...value, nova]);
     setText("");
     setCor(TAG_COLORS[(TAG_COLORS.indexOf(cor) + 1) % TAG_COLORS.length]);
   }
 
-  function remove(index: number) {
+  function handleRemove(index: number) {
     onChange(value.filter((_, i) => i !== index));
   }
 
   const preview = text.trim();
 
   return (
-    <div>
+    <div className="space-y-2">
       {value.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {value.map((tag, index) => (
             <span
               key={`${tag.nome}-${index}`}
@@ -59,7 +61,7 @@ export function TagInput({
               {tag.nome}
               <button
                 type="button"
-                onClick={() => remove(index)}
+                onClick={() => handleRemove(index)}
                 className="opacity-70 hover:opacity-100"
                 aria-label={`Remover ${tag.nome}`}
               >
@@ -79,21 +81,19 @@ export function TagInput({
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                add();
+                handleAdd();
               }
             }}
             placeholder="Nome da tag"
-            list="tarefa-tags-datalist"
             className="min-w-0 flex-1 rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-sm outline-none transition focus:border-[#24483F] focus:ring-1 focus:ring-[#24483F]"
           />
-          {preview && (
-            <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: cor, color: tagTextColor(cor) }}
-            >
-              {preview}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="shrink-0 rounded-md bg-[#24483F] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#1c3a33]"
+          >
+            Adicionar
+          </button>
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -112,21 +112,16 @@ export function TagInput({
               style={{ backgroundColor: c }}
             />
           ))}
-          <button
-            type="button"
-            onClick={add}
-            className="ml-auto rounded-md border border-black/10 px-3 py-1 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-          >
-            Adicionar
-          </button>
+          {preview && (
+            <span
+              className="ml-1 rounded-full px-2 py-0.5 text-xs font-medium"
+              style={{ backgroundColor: cor, color: tagTextColor(cor) }}
+            >
+              {preview}
+            </span>
+          )}
         </div>
       </div>
-
-      <datalist id="tarefa-tags-datalist">
-        {allTags.map((tag) => (
-          <option key={tag.id} value={tag.nome} />
-        ))}
-      </datalist>
     </div>
   );
 }

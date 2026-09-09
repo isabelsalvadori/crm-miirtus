@@ -33,9 +33,9 @@ function toISODate(value: string): string | null {
   return v ? v.slice(0, 10) : null;
 }
 
-function toISODateTime(value: string): string | null {
+function toTime(value: string): string | null {
   const v = value.trim();
-  return v ? v : null;
+  return v ? v.slice(0, 8) : null;
 }
 
 function safeJsonArray<T>(raw: string): T[] {
@@ -58,8 +58,9 @@ function parseTarefa(
   const prioridade = String(formData.get("prioridade") ?? "").trim();
   const dataPrazo = String(formData.get("data_prazo") ?? "");
   const naAgenda = formData.get("na_agenda") === "on";
-  const agendaInicio = String(formData.get("agenda_inicio") ?? "");
-  const agendaFim = String(formData.get("agenda_fim") ?? "");
+  const agendaData = String(formData.get("agenda_data") ?? "");
+  const agendaHoraInicio = String(formData.get("agenda_hora_inicio") ?? "");
+  const agendaHoraFim = String(formData.get("agenda_hora_fim") ?? "");
   const produtoId = String(formData.get("produto_id") ?? "").trim();
   const projetoId = String(formData.get("projeto_id") ?? "").trim();
 
@@ -77,8 +78,8 @@ function parseTarefa(
   if (prioridade && !PRIORIDADE_VALUES.includes(prioridade)) {
     fieldErrors.prioridade = "Prioridade inválida.";
   }
-  if (naAgenda && !agendaInicio) {
-    fieldErrors.agenda_inicio = "Informe o início na agenda.";
+  if (naAgenda && !agendaData) {
+    fieldErrors.agenda_data = "Informe a data na agenda.";
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -97,9 +98,9 @@ function parseTarefa(
   const ext: Record<string, unknown> = {
     observacoes: observacoes || null,
     produto_id: produtoId || null,
-    na_agenda: naAgenda,
-    agenda_inicio: naAgenda ? toISODateTime(agendaInicio) : null,
-    agenda_fim: naAgenda ? toISODateTime(agendaFim) : null,
+    agenda_data: naAgenda ? toISODate(agendaData) : null,
+    agenda_hora_inicio: naAgenda ? toTime(agendaHoraInicio) : null,
+    agenda_hora_fim: naAgenda ? toTime(agendaHoraFim) : null,
   };
 
   return {

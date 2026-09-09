@@ -125,8 +125,9 @@ export function toDateInputValue(iso: string | null | undefined): string {
   return iso ? iso.slice(0, 10) : "";
 }
 
-export function toDateTimeLocalValue(iso: string | null | undefined): string {
-  return iso ? iso.slice(0, 16) : "";
+/** "14:30:00" -> "14:30" para <input type="time">. */
+export function toTimeInputValue(value: string | null | undefined): string {
+  return value ? value.slice(0, 5) : "";
 }
 
 export function sanitizeSearch(raw: string): string {
