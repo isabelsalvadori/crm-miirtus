@@ -26,6 +26,17 @@ const NIVEL_OPTIONS = [
   { value: "alto", label: "Alto" },
 ] as const;
 
+const CATEGORIA_OPTIONS = [
+  "Produto",
+  "Conteúdo",
+  "Evento",
+  "Ferramenta",
+  "Campanha",
+  "Melhoria",
+  "Parceria",
+  "Outro",
+] as const;
+
 const STATUS_BADGE: Record<string, string> = {
   caixa_de_entrada: "bg-[#E3BD62]/25 text-[#2D3230]",
   analisando: "bg-[#B97059]/15 text-[#B97059]",
@@ -76,6 +87,7 @@ function Spinner() {
 export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
   const [statusFiltro, setStatusFiltro] = useState("");
   const [impactoFiltro, setImpactoFiltro] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [quickAberto, setQuickAberto] = useState(false);
   const [emEdicao, setEmEdicao] = useState<Ideia | null>(null);
 
@@ -84,9 +96,10 @@ export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
       ideias.filter(
         (ideia) =>
           (!statusFiltro || ideia.status === statusFiltro) &&
-          (!impactoFiltro || ideia.impacto === impactoFiltro),
+          (!impactoFiltro || ideia.impacto === impactoFiltro) &&
+          (!categoriaFiltro || ideia.categoria === categoriaFiltro),
       ),
-    [ideias, statusFiltro, impactoFiltro],
+    [ideias, statusFiltro, impactoFiltro, categoriaFiltro],
   );
 
   function abrirEdicao(ideia: Ideia) {
@@ -96,7 +109,7 @@ export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
   const selectClass =
     "rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-[#2D3230] outline-none transition focus:border-[#24483F] focus:ring-1 focus:ring-[#24483F]";
 
-  const temFiltro = Boolean(statusFiltro || impactoFiltro);
+  const temFiltro = Boolean(statusFiltro || impactoFiltro || categoriaFiltro);
 
   return (
     <div className="space-y-6">
@@ -143,12 +156,26 @@ export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
             </option>
           ))}
         </select>
+        <select
+          value={categoriaFiltro}
+          onChange={(event) => setCategoriaFiltro(event.target.value)}
+          className={selectClass}
+          aria-label="Filtrar por categoria"
+        >
+          <option value="">Todas as categorias</option>
+          {CATEGORIA_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
         {temFiltro && (
           <button
             type="button"
             onClick={() => {
               setStatusFiltro("");
               setImpactoFiltro("");
+              setCategoriaFiltro("");
             }}
             className="text-sm font-medium text-gray-500 transition-colors hover:text-[#24483F]"
           >
