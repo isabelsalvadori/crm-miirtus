@@ -79,6 +79,8 @@ create table if not exists produtos (
   descricao text,
   -- modelo_acesso: 'pago' | 'gratuito' | 'assinatura' | 'incluso' | 'interno' | 'outro'
   modelo_acesso text,
+  -- tipo_cobranca (quando pago/assinatura): 'unico' | 'recorrente_mensal' | 'recorrente_anual' | 'outro'
+  tipo_cobranca text,
   preco numeric(12,2),
   moeda text not null default 'BRL',
   created_at timestamptz not null default now(),

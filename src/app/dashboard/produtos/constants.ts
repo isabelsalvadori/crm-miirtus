@@ -35,12 +35,22 @@ export const MODELO_ACESSO_OPTIONS = [
   { value: "outro", label: "Outro" },
 ] as const;
 
-/** Modelos de acesso em que o campo Preço é exibido/relevante. */
+export const TIPO_COBRANCA_OPTIONS = [
+  { value: "unico", label: "Pagamento único" },
+  { value: "recorrente_mensal", label: "Recorrente mensal" },
+  { value: "recorrente_anual", label: "Recorrente anual" },
+  { value: "outro", label: "Outro" },
+] as const;
+
+/** Modelos de acesso em que os campos Preço e Tipo de cobrança são relevantes. */
 export const MODELOS_COM_PRECO: readonly string[] = ["pago", "assinatura"];
 
 export const TIPO_VALUES: readonly string[] = TIPO_OPTIONS.map((o) => o.value);
 export const STATUS_VALUES: readonly string[] = STATUS_OPTIONS.map((o) => o.value);
 export const MODELO_ACESSO_VALUES: readonly string[] = MODELO_ACESSO_OPTIONS.map(
+  (o) => o.value,
+);
+export const TIPO_COBRANCA_VALUES: readonly string[] = TIPO_COBRANCA_OPTIONS.map(
   (o) => o.value,
 );
 
@@ -54,6 +64,10 @@ export function statusLabel(value: string | null | undefined): string {
 
 export function modeloAcessoLabel(value: string | null | undefined): string {
   return MODELO_ACESSO_OPTIONS.find((o) => o.value === value)?.label ?? "—";
+}
+
+export function tipoCobrancaLabel(value: string | null | undefined): string {
+  return TIPO_COBRANCA_OPTIONS.find((o) => o.value === value)?.label ?? "—";
 }
 
 export const STATUS_BADGE_CLASS: Record<string, string> = {

@@ -7,6 +7,7 @@ import {
   MODELOS_COM_PRECO,
   MODELO_ACESSO_VALUES,
   STATUS_VALUES,
+  TIPO_COBRANCA_VALUES,
   TIPO_VALUES,
   slugify,
 } from "./constants";
@@ -23,9 +24,20 @@ type ParsedInput = {
   tipo: string | null;
   status: string | null;
   modelo_acesso: string | null;
+  tipo_cobranca: string | null;
   preco: number | null;
   descricao: string | null;
 };
+
+/** Erro do PostgREST quando uma coluna não existe no schema cache. */
+const MISSING_COLUMN = "PGRST204";
+
+function saveErrorMessage(error: { code?: string } | null): string {
+  if (error?.code === MISSING_COLUMN) {
+    return "Banco desatualizado: aplique a migração de Produtos (src/database/migrations/0002_produtos_tipo_cobranca.sql) no Supabase.";
+  }
+  return "Não foi possível salvar o produto. Tente novamente.";
+}
 
 function parseAndValidate(
   formData: FormData,
@@ -37,6 +49,7 @@ function parseAndValidate(
   const tipo = String(formData.get("tipo") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const modeloAcesso = String(formData.get("modelo_acesso") ?? "").trim();
+  const tipoCobranca = String(formData.get("tipo_cobranca") ?? "").trim();
   const precoRaw = String(formData.get("preco") ?? "").trim();
   const descricao = String(formData.get("descricao") ?? "").trim();
 
@@ -65,8 +78,13 @@ function parseAndValidate(
     fieldErrors.modelo_acesso = "Modelo de acesso inválido.";
   }
 
-  let preco: number | null = null;
+  if (tipoCobranca && !TIPO_COBRANCA_VALUES.includes(tipoCobranca)) {
+    fieldErrors.tipo_cobranca = "Tipo de cobrança inválido.";
+  }
+
   const precoRelevante = MODELOS_COM_PRECO.includes(modeloAcesso);
+
+  let preco: number | null = null;
   if (precoRelevante && precoRaw) {
     const normalized = precoRaw.replace(/\s/g, "").replace(",", ".");
     const parsed = Number(normalized);
@@ -88,6 +106,8 @@ function parseAndValidate(
       tipo: tipo || null,
       status: status || null,
       modelo_acesso: modeloAcesso || null,
+      // Cobrança só faz sentido quando há preço (Pago/Assinatura).
+      tipo_cobranca: precoRelevante ? tipoCobranca || null : null,
       preco,
       descricao: descricao || null,
     },
@@ -115,10 +135,8 @@ export async function createProduto(
     .single();
 
   if (error || !data) {
-    return {
-      ok: false,
-      error: "Não foi possível salvar o produto. Tente novamente.",
-    };
+    console.error("[createProduto] falha no insert:", error);
+    return { ok: false, error: saveErrorMessage(error) };
   }
 
   revalidatePath("/dashboard/produtos");
@@ -146,10 +164,8 @@ export async function updateProduto(
     .eq("id", id);
 
   if (error) {
-    return {
-      ok: false,
-      error: "Não foi possível salvar as alterações. Tente novamente.",
-    };
+    console.error("[updateProduto] falha no update:", error);
+    return { ok: false, error: saveErrorMessage(error) };
   }
 
   revalidatePath("/dashboard/produtos");
@@ -176,6 +192,7 @@ export async function arquivarProduto(
     .eq("id", id);
 
   if (error) {
+    console.error("[arquivarProduto] falha:", error);
     return { ok: false, error: "Não foi possível arquivar. Tente novamente." };
   }
 
@@ -199,6 +216,7 @@ export async function excluirProduto(
   const { error } = await supabase.from("produtos").delete().eq("id", id);
 
   if (error) {
+    console.error("[excluirProduto] falha:", error);
     return { ok: false, error: "Não foi possível excluir. Tente novamente." };
   }
 

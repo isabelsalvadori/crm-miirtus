@@ -7,6 +7,7 @@ import {
   MODELO_ACESSO_OPTIONS,
   MODELOS_COM_PRECO,
   STATUS_OPTIONS,
+  TIPO_COBRANCA_OPTIONS,
   TIPO_OPTIONS,
   slugify,
 } from "../constants";
@@ -22,6 +23,7 @@ type ProdutoFormProps = {
     tipo?: string;
     status?: string;
     modelo_acesso?: string;
+    tipo_cobranca?: string;
     preco?: string;
     descricao?: string;
   };
@@ -214,6 +216,30 @@ export function ProdutoForm({
           </div>
         )}
       </div>
+
+      {mostrarPreco && (
+        <div className="sm:max-w-xs">
+          <label htmlFor="tipo_cobranca" className={labelClass}>
+            Tipo de cobrança
+          </label>
+          <select
+            id="tipo_cobranca"
+            name="tipo_cobranca"
+            defaultValue={defaults.tipo_cobranca ?? ""}
+            className={fieldClass}
+          >
+            <option value="">Selecione</option>
+            {TIPO_COBRANCA_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {state.fieldErrors?.tipo_cobranca && (
+            <p className={errorClass}>{state.fieldErrors.tipo_cobranca}</p>
+          )}
+        </div>
+      )}
 
       <div>
         <label htmlFor="descricao" className={labelClass}>

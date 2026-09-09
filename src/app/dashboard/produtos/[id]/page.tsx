@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatPreco,
   modeloAcessoLabel,
+  tipoCobrancaLabel,
   tipoLabel,
 } from "../constants";
 import { StatusBadge } from "../_components/status-badge";
@@ -25,7 +26,7 @@ export default async function ProdutoPerfilPage({
   const { data: produto } = await supabase
     .from("produtos")
     .select(
-      "id, nome, slug, tipo, status, modelo_acesso, preco, moeda, descricao, arquivado_em",
+      "id, nome, slug, tipo, status, modelo_acesso, tipo_cobranca, preco, moeda, descricao, arquivado_em",
     )
     .eq("id", params.id)
     .maybeSingle();
@@ -84,13 +85,25 @@ export default async function ProdutoPerfilPage({
         </div>
 
         {preco && (
-          <div className="mt-6">
-            <dt className="text-xs uppercase tracking-wide text-gray-500">
-              Preço
-            </dt>
-            <dd className="mt-0.5 text-lg font-semibold text-[#24483F]">
-              {preco}
-            </dd>
+          <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">
+                Preço
+              </dt>
+              <dd className="mt-0.5 text-lg font-semibold text-[#24483F]">
+                {preco}
+              </dd>
+            </div>
+            {produto.tipo_cobranca && (
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-gray-500">
+                  Tipo de cobrança
+                </dt>
+                <dd className="mt-0.5 text-sm text-gray-800">
+                  {tipoCobrancaLabel(produto.tipo_cobranca)}
+                </dd>
+              </div>
+            )}
           </div>
         )}
 
