@@ -1,11 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
+import { detectTarefaColumns } from "../tarefas/db";
 import type { NotaHoje, TarefaHoje } from "./actions";
 import { HojeView } from "./components/HojeView";
 
 const TZ = "America/Sao_Paulo";
 
-const TAREFA_COLS =
-  "id, titulo, status, prioridade, data_prazo, agenda_data, agenda_hora_inicio, agenda_hora_fim";
+// Colunas garantidas em `tarefas`. As de agenda vieram na migração 0003 e
+// podem não existir; são detectadas em runtime e o painel degrada sem elas.
+const TAREFA_BASE_COLS = "id, titulo, status, prioridade, data_prazo";
+const AGENDA_COLS = [
+  "agenda_data",
+  "agenda_hora_inicio",
+  "agenda_hora_fim",
+] as const;
 
 function dataISO(date: Date): string {
   // YYYY-MM-DD no fuso de São Paulo
@@ -38,6 +45,23 @@ function ordenarPorHora(a: TarefaHoje, b: TarefaHoje): number {
   );
 }
 
+function mapTarefa(row: Record<string, unknown>): TarefaHoje {
+  return {
+    id: row.id as string,
+    titulo: row.titulo as string,
+    status: (row.status as string | null) ?? null,
+    prioridade: (row.prioridade as string | null) ?? null,
+    data_prazo: (row.data_prazo as string | null) ?? null,
+    agenda_data: (row.agenda_data as string | null) ?? null,
+    agenda_hora_inicio: (row.agenda_hora_inicio as string | null) ?? null,
+    agenda_hora_fim: (row.agenda_hora_fim as string | null) ?? null,
+  };
+}
+
+function toLista(res: { data: unknown }): TarefaHoje[] {
+  return ((res.data ?? []) as Record<string, unknown>[]).map(mapTarefa);
+}
+
 export default async function HojePage() {
   const supabase = createClient();
 
@@ -46,12 +70,32 @@ export default async function HojePage() {
   const inicioHoje = `${hoje}T00:00:00`;
   const fimHoje = `${hoje}T23:59:59.999`;
 
+  const cols = await detectTarefaColumns(supabase);
+  const temAgenda = cols.has("agenda_data");
+  const select = [
+    TAREFA_BASE_COLS,
+    ...AGENDA_COLS.filter((c) => cols.has(c)),
+  ].join(", ");
+
   const base = () =>
     supabase
       .from("tarefas")
-      .select(TAREFA_COLS)
+      .select(select)
       .is("arquivado_em", null)
       .is("parent_id", null);
+
+  const tarefasHojeQuery = temAgenda
+    ? base()
+        .or(
+          `agenda_data.eq.${hoje},and(data_prazo.gte.${inicioHoje},data_prazo.lte.${fimHoje})`,
+        )
+        .neq("status", "concluida")
+        .limit(50)
+    : base()
+        .gte("data_prazo", inicioHoje)
+        .lte("data_prazo", fimHoje)
+        .neq("status", "concluida")
+        .limit(50);
 
   const [
     tarefasHojeRes,
@@ -61,12 +105,7 @@ export default async function HojePage() {
     aguardandoRes,
     notasRes,
   ] = await Promise.all([
-    base()
-      .or(
-        `agenda_data.eq.${hoje},and(data_prazo.gte.${inicioHoje},data_prazo.lte.${fimHoje})`,
-      )
-      .neq("status", "concluida")
-      .limit(50),
+    tarefasHojeQuery,
     base()
       .lt("data_prazo", inicioHoje)
       .neq("status", "concluida")
@@ -102,7 +141,9 @@ export default async function HojePage() {
     aguardandoRes.error ||
     notasRes.error;
 
-  const tarefasHoje = (tarefasHojeRes.data ?? []) as TarefaHoje[];
+  if (erro) console.error("Erro ao carregar o painel de hoje:", erro);
+
+  const tarefasHoje = toLista(tarefasHojeRes);
   const agenda = tarefasHoje
     .filter((t) => t.agenda_data === hoje)
     .sort(ordenarPorHora);
@@ -119,10 +160,10 @@ export default async function HojePage() {
           dataCompleta={dataCompletaPtBR(agora)}
           agenda={agenda}
           prazoHoje={prazoHoje}
-          atrasadas={(atrasadasRes.data ?? []) as TarefaHoje[]}
-          emAndamento={(emAndamentoRes.data ?? []) as TarefaHoje[]}
-          prioridades={(prioritariasRes.data ?? []) as TarefaHoje[]}
-          aguardando={(aguardandoRes.data ?? []) as TarefaHoje[]}
+          atrasadas={toLista(atrasadasRes)}
+          emAndamento={toLista(emAndamentoRes)}
+          prioridades={toLista(prioritariasRes)}
+          aguardando={toLista(aguardandoRes)}
           notas={(notasRes.data ?? []) as NotaHoje[]}
         />
       )}
