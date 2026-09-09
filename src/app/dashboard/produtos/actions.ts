@@ -29,16 +29,6 @@ type ParsedInput = {
   descricao: string | null;
 };
 
-/** Erro do PostgREST quando uma coluna não existe no schema cache. */
-const MISSING_COLUMN = "PGRST204";
-
-function saveErrorMessage(error: { code?: string } | null): string {
-  if (error?.code === MISSING_COLUMN) {
-    return "Banco desatualizado: aplique a migração de Produtos (src/database/migrations/0002_produtos_tipo_cobranca.sql) no Supabase.";
-  }
-  return "Não foi possível salvar o produto. Tente novamente.";
-}
-
 function parseAndValidate(
   formData: FormData,
 ):
@@ -136,7 +126,10 @@ export async function createProduto(
 
   if (error || !data) {
     console.error("[createProduto] falha no insert:", error);
-    return { ok: false, error: saveErrorMessage(error) };
+    return {
+      ok: false,
+      error: "Não foi possível salvar o produto. Tente novamente.",
+    };
   }
 
   revalidatePath("/dashboard/produtos");
@@ -165,7 +158,10 @@ export async function updateProduto(
 
   if (error) {
     console.error("[updateProduto] falha no update:", error);
-    return { ok: false, error: saveErrorMessage(error) };
+    return {
+      ok: false,
+      error: "Não foi possível salvar as alterações. Tente novamente.",
+    };
   }
 
   revalidatePath("/dashboard/produtos");
