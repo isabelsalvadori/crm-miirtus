@@ -63,7 +63,9 @@ export default async function ProjetoPerfilPage({
     notFound();
   }
 
-  const [progresso, produtosVinculados, fasesRes, produtosRes, tagsRes] =
+  // Tudo aqui só depende do id do projeto (já em mãos) — dispara em paralelo
+  // em vez de uma query de cada vez.
+  const [progresso, produtosVinculados, fasesRes, produtosRes, tagsRes, cols] =
     await Promise.all([
       progressoDoProjeto(supabase, projeto.id as string),
       produtosDoProjeto(supabase, projeto.id as string),
@@ -75,6 +77,7 @@ export default async function ProjetoPerfilPage({
         .order("ordem", { ascending: true }),
       supabase.from("produtos").select("id, nome").is("arquivado_em", null).order("nome"),
       supabase.from("tags").select("id, nome, cor").order("nome"),
+      detectTarefaColumns(supabase),
     ]);
 
   const fases = (fasesRes.data ?? []) as FaseItem[];
@@ -83,15 +86,29 @@ export default async function ProjetoPerfilPage({
   const produtoNome = new Map(produtosTodos.map((p) => [p.id, p.nome]));
 
   // ----- Tarefas (Kanban filtrado por este projeto) -----
-  const cols = await detectTarefaColumns(supabase);
-  const { data: tarefaRowsRaw } = await supabase
-    .from("tarefas")
-    .select(tarefaSelect(cols, true))
-    .eq("projeto_id", projeto.id)
-    .is("parent_id", null)
-    .is("arquivado_em", null)
-    .order("ordem", { ascending: true })
-    .order("created_at", { ascending: false });
+  const abrirNova = searchParams.nova === "1";
+  const tarefaId = searchParams.tarefa ?? null;
+
+  // A lista do Kanban e a tarefa aberta no modal só dependem de `cols`,
+  // não uma da outra — buscam em paralelo em vez de em sequência.
+  const [{ data: tarefaRowsRaw }, tarefaAbertaRes] = await Promise.all([
+    supabase
+      .from("tarefas")
+      .select(tarefaSelect(cols, true))
+      .eq("projeto_id", projeto.id)
+      .is("parent_id", null)
+      .is("arquivado_em", null)
+      .order("ordem", { ascending: true })
+      .order("created_at", { ascending: false }),
+    tarefaId
+      ? supabase
+          .from("tarefas")
+          .select(tarefaSelect(cols, true))
+          .eq("id", tarefaId)
+          .is("parent_id", null)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   const tarefaRows = (tarefaRowsRaw ?? []) as unknown as Record<string, unknown>[];
   const topLevelIds = tarefaRows.map((row) => row.id as string);
@@ -139,18 +156,11 @@ export default async function ProjetoPerfilPage({
   }));
 
   // ----- Modal de tarefa (criar/ver/editar) -----
-  const abrirNova = searchParams.nova === "1";
-  const tarefaId = searchParams.tarefa ?? null;
   let tarefaAberta: TarefaFull | null = null;
   let subtarefas: SubtarefaItem[] = [];
 
   if (tarefaId) {
-    const { data: row } = await supabase
-      .from("tarefas")
-      .select(tarefaSelect(cols, true))
-      .eq("id", tarefaId)
-      .is("parent_id", null)
-      .maybeSingle();
+    const row = tarefaAbertaRes.data;
 
     if (row) {
       const r = row as unknown as Record<string, unknown>;

@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   formatPreco,
   modeloAcessoLabel,
@@ -19,18 +17,15 @@ export type ProdutoCard = {
 };
 
 export function ProdutosGrid({ produtos }: { produtos: ProdutoCard[] }) {
-  const router = useRouter();
-
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {produtos.map((produto) => {
         const preco = formatPreco(produto.preco, produto.moeda ?? "BRL");
 
         return (
-          <button
+          <Link
             key={produto.id}
-            type="button"
-            onClick={() => router.push(`/dashboard/produtos/${produto.id}`)}
+            href={`/dashboard/produtos/${produto.id}`}
             className="flex flex-col rounded-xl border border-black/5 bg-white p-5 text-left shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-3">
@@ -52,7 +47,7 @@ export function ProdutosGrid({ produtos }: { produtos: ProdutoCard[] }) {
                 </span>
               )}
             </div>
-          </button>
+          </Link>
         );
       })}
     </div>

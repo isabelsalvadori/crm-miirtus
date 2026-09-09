@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatDate, origemLabel } from "../constants";
 import { StatusBadge } from "./status-badge";
 
@@ -15,8 +13,6 @@ export type ClienteRow = {
 };
 
 export function ClientesTable({ clientes }: { clientes: ClienteRow[] }) {
-  const router = useRouter();
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-sm">
@@ -34,11 +30,15 @@ export function ClientesTable({ clientes }: { clientes: ClienteRow[] }) {
           {clientes.map((cliente) => (
             <tr
               key={cliente.id}
-              onClick={() => router.push(`/dashboard/clientes/${cliente.id}`)}
-              className="cursor-pointer border-b border-black/5 transition-colors last:border-0 hover:bg-[#F5F1E8]"
+              className="relative border-b border-black/5 transition-colors last:border-0 hover:bg-[#F5F1E8]"
             >
               <td className="px-4 py-3 font-medium text-gray-900">
-                {cliente.nome}
+                <Link
+                  href={`/dashboard/clientes/${cliente.id}`}
+                  className="absolute inset-0"
+                  aria-label={cliente.nome}
+                />
+                <span className="relative">{cliente.nome}</span>
               </td>
               <td className="px-4 py-3 text-gray-600">{cliente.email || "—"}</td>
               <td className="px-4 py-3 text-gray-600">

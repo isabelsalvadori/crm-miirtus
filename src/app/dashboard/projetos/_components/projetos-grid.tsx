@@ -1,24 +1,19 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatData, isVencido } from "../constants";
 import type { ProjetoListItem } from "../types";
 import { PriorityFlag, StatusBadge } from "./badges";
 import { ProgressBar } from "./progress-bar";
 
 export function ProjetosGrid({ projetos }: { projetos: ProjetoListItem[] }) {
-  const router = useRouter();
-
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {projetos.map((projeto) => {
         const vencido = isVencido(projeto.data_fim_prevista, projeto.status);
 
         return (
-          <button
+          <Link
             key={projeto.id}
-            type="button"
-            onClick={() => router.push(`/dashboard/projetos/${projeto.id}`)}
+            href={`/dashboard/projetos/${projeto.id}`}
             className="flex flex-col rounded-xl border border-black/5 bg-white p-5 text-left shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-3">
@@ -65,7 +60,7 @@ export function ProjetosGrid({ projetos }: { projetos: ProjetoListItem[] }) {
                 ))}
               </div>
             )}
-          </button>
+          </Link>
         );
       })}
     </div>
