@@ -1,23 +1,47 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import {
-  criarTarefaDeHoje,
+  arquivarTarefa,
+  atualizarTarefa,
+  criarTarefa,
+  excluirTarefa,
   type FormState,
-  type OptionLite,
   type TagLite,
+  type TarefaHoje,
+  type VinculoOpcoes,
+  type VinculoTipo,
 } from "../actions";
-import {
-  PRIORIDADE_OPTIONS,
-  STATUS_OPTIONS,
-} from "../../tarefas/constants";
+import { PRIORIDADE_OPTIONS, STATUS_OPTIONS } from "../../tarefas/constants";
 
 const initialState: FormState = {};
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-[#2D3230] outline-none transition focus:border-[#24483F] focus:ring-1 focus:ring-[#24483F]";
 const labelClass = "block text-sm font-medium text-[#2D3230]";
+
+const VINCULOS: { tipo: VinculoTipo; label: string; coluna: string }[] = [
+  { tipo: "projeto", label: "Projeto", coluna: "projeto_id" },
+  { tipo: "produto", label: "Produto", coluna: "produto_id" },
+  { tipo: "evento", label: "Evento", coluna: "evento_id" },
+  { tipo: "cliente", label: "Cliente", coluna: "cliente_id" },
+  { tipo: "ideia", label: "Ideia", coluna: "ideia_id" },
+  { tipo: "campanha", label: "Campanha", coluna: "campanha_id" },
+];
+
+function vinculoAtual(tarefa: TarefaHoje | null, tipo: VinculoTipo): string {
+  if (!tarefa) return "";
+  const mapa: Record<VinculoTipo, string | null> = {
+    projeto: tarefa.projeto_id,
+    produto: tarefa.produto_id,
+    evento: tarefa.evento_id,
+    cliente: tarefa.cliente_id,
+    ideia: tarefa.ideia_id,
+    campanha: tarefa.campanha_id,
+  };
+  return mapa[tipo] ?? "";
+}
 
 function Spinner() {
   return (
@@ -44,7 +68,7 @@ function Spinner() {
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -53,7 +77,118 @@ function SubmitButton() {
       className="inline-flex items-center gap-2 rounded-lg bg-[#24483F] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1c3a33] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending && <Spinner />}
-      {pending ? "Salvando..." : "Criar tarefa"}
+      {pending ? "Salvando..." : label}
+    </button>
+  );
+}
+
+function DangerBloco({
+  acao,
+  palavra,
+  rotulo,
+  descricao,
+  tarefaId,
+  tone,
+  onDone,
+}: {
+  acao: (prev: FormState, fd: FormData) => Promise<FormState>;
+  palavra: "ARQUIVAR" | "EXCLUIR";
+  rotulo: string;
+  descricao: string;
+  tarefaId: string;
+  tone: "argila" | "red";
+  onDone: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [state, formAction] = useFormState(acao, initialState);
+
+  useEffect(() => {
+    if (state.ok) onDone();
+  }, [state, onDone]);
+
+  const cor =
+    tone === "red"
+      ? "text-red-600 hover:bg-red-50"
+      : "text-[#B97059] hover:bg-[#B97059]/10";
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          setAberto((v) => !v);
+          setTexto("");
+        }}
+        aria-expanded={aberto}
+        className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${cor}`}
+      >
+        {rotulo}
+      </button>
+
+      {aberto && (
+        <form
+          action={formAction}
+          className="mt-2 rounded-lg border border-black/5 bg-white p-3"
+        >
+          <input type="hidden" name="id" value={tarefaId} />
+          <p className="text-xs text-gray-500">{descricao}</p>
+          <label className="mt-2 block text-xs text-gray-500">
+            Digite{" "}
+            <strong className="font-semibold text-[#2D3230]">{palavra}</strong>{" "}
+            para confirmar
+          </label>
+          <input
+            name="confirmacao"
+            value={texto}
+            onChange={(event) => setTexto(event.target.value)}
+            autoComplete="off"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-[#2D3230] outline-none focus:border-[#24483F] focus:ring-1 focus:ring-[#24483F]"
+          />
+          {state.error && (
+            <p className="mt-1 text-xs text-red-600">{state.error}</p>
+          )}
+          <div className="mt-2 flex items-center gap-3">
+            <ConfirmSubmit rotulo={rotulo} disabled={texto !== palavra} tone={tone} />
+            <button
+              type="button"
+              onClick={() => {
+                setAberto(false);
+                setTexto("");
+              }}
+              className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function ConfirmSubmit({
+  rotulo,
+  disabled,
+  tone,
+}: {
+  rotulo: string;
+  disabled: boolean;
+  tone: "argila" | "red";
+}) {
+  const { pending } = useFormStatus();
+  const cor =
+    tone === "red"
+      ? "border-red-300 text-red-700 hover:bg-red-50"
+      : "border-[#B97059]/40 text-[#B97059] hover:bg-[#B97059]/10";
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${cor}`}
+    >
+      {pending && <Spinner />}
+      {pending ? "Processando..." : rotulo}
     </button>
   );
 }
@@ -150,29 +285,37 @@ function TagInput({
 }
 
 type Props = {
-  projetos: OptionLite[];
-  produtos: OptionLite[];
+  tarefa: TarefaHoje | null;
+  vinculos: VinculoOpcoes;
   tags: TagLite[];
-  temProdutoCol: boolean;
+  colunas: string[];
   onClose: () => void;
 };
 
 export function TarefaModal({
-  projetos,
-  produtos,
+  tarefa,
+  vinculos,
   tags,
-  temProdutoCol,
+  colunas,
   onClose,
 }: Props) {
+  const editando = Boolean(tarefa);
+
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  const [status, setStatus] = useState("a_fazer");
-  const [prioridade, setPrioridade] = useState("normal");
-  const [tagIds, setTagIds] = useState<Set<string>>(new Set());
+  const [status, setStatus] = useState(tarefa?.status ?? "a_fazer");
+  const [prioridade, setPrioridade] = useState(tarefa?.prioridade ?? "normal");
+  const [tagIds, setTagIds] = useState<Set<string>>(
+    new Set(tarefa?.tag_ids ?? []),
+  );
   const [novasTags, setNovasTags] = useState<string[]>([]);
 
-  const [state, formAction] = useFormState(criarTarefaDeHoje, initialState);
+  const action = useMemo(
+    () => (tarefa ? atualizarTarefa.bind(null, tarefa.id) : criarTarefa),
+    [tarefa],
+  );
+  const [state, formAction] = useFormState(action, initialState);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -213,6 +356,7 @@ export function TarefaModal({
     ...novasTags.map((nome) => ({ nome })),
   ]);
 
+  const temAgenda = colunas.includes("agenda_data");
   const show = mounted && !closing;
 
   return (
@@ -227,13 +371,15 @@ export function TarefaModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Nova tarefa"
+        aria-label={editando ? "Editar tarefa" : "Nova tarefa"}
         className={`relative flex max-h-[90vh] w-full max-w-[860px] flex-col overflow-hidden rounded-xl bg-[#F5F1E8] shadow-xl transition-all duration-200 ${
           show ? "scale-100 opacity-100" : "scale-95 opacity-0"
         }`}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-black/5 bg-white px-5 py-3">
-          <h2 className="text-sm font-semibold text-[#24483F]">Nova tarefa</h2>
+          <h2 className="text-sm font-semibold text-[#24483F]">
+            {editando ? "Editar tarefa" : "Nova tarefa"}
+          </h2>
           <button
             type="button"
             onClick={close}
@@ -244,188 +390,234 @@ export function TarefaModal({
           </button>
         </header>
 
-        <form
-          action={formAction}
-          className="flex-1 overflow-y-auto p-5"
-          noValidate
-        >
-          <input type="hidden" name="status" value={status} />
-          <input type="hidden" name="prioridade" value={prioridade} />
-          <input type="hidden" name="tags_json" value={tagsJson} />
+        <div className="flex-1 overflow-y-auto p-5">
+          <form action={formAction} noValidate>
+            <input type="hidden" name="status" value={status} />
+            <input type="hidden" name="prioridade" value={prioridade} />
+            <input type="hidden" name="tags_json" value={tagsJson} />
 
-          {state.error && (
-            <p
-              role="alert"
-              className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
-            >
-              {state.error}
-            </p>
-          )}
+            {state.error && (
+              <p
+                role="alert"
+                className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+              >
+                {state.error}
+              </p>
+            )}
 
-          <div className="grid gap-6 md:grid-cols-[1fr_280px]">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="titulo" className={labelClass}>
-                  Título <span className="text-[#B97059]">*</span>
-                </label>
-                <input
-                  id="titulo"
-                  name="titulo"
-                  type="text"
-                  required
-                  maxLength={300}
-                  autoFocus
-                  className={fieldClass}
+            <div className="grid gap-6 md:grid-cols-[1fr_300px]">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="titulo" className={labelClass}>
+                    Título <span className="text-[#B97059]">*</span>
+                  </label>
+                  <input
+                    id="titulo"
+                    name="titulo"
+                    type="text"
+                    required
+                    maxLength={300}
+                    autoFocus
+                    defaultValue={tarefa?.titulo ?? ""}
+                    className={fieldClass}
+                  />
+                  {state.fieldErrors?.titulo && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {state.fieldErrors.titulo}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="descricao" className={labelClass}>
+                    Descrição
+                  </label>
+                  <textarea
+                    id="descricao"
+                    name="descricao"
+                    rows={6}
+                    defaultValue={tarefa?.descricao ?? ""}
+                    className={fieldClass}
+                  />
+                </div>
+
+                <TagInput
+                  disponiveis={tags}
+                  selecionadas={tagIds}
+                  novas={novasTags}
+                  onToggle={toggleTag}
+                  onAdd={(nome) =>
+                    setNovasTags((prev) =>
+                      prev.includes(nome) ? prev : [...prev, nome],
+                    )
+                  }
+                  onRemoveNova={(nome) =>
+                    setNovasTags((prev) => prev.filter((n) => n !== nome))
+                  }
                 />
-                {state.fieldErrors?.titulo && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {state.fieldErrors.titulo}
-                  </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <span className={labelClass}>Status</span>
+                  <div className="mt-1.5 space-y-1.5">
+                    {STATUS_OPTIONS.map((option) => {
+                      const ativo = status === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setStatus(option.value)}
+                          aria-pressed={ativo}
+                          className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                            ativo
+                              ? "border-[#24483F] bg-[#24483F] text-white"
+                              : "border-black/10 bg-white text-[#2D3230] hover:border-[#24483F]/40"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <span className={labelClass}>Prioridade</span>
+                  <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-lg border border-black/10 bg-white p-1">
+                    {PRIORIDADE_OPTIONS.map((option) => {
+                      const ativo = prioridade === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setPrioridade(option.value)}
+                          aria-pressed={ativo}
+                          className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                            ativo
+                              ? "bg-[#E3BD62] text-[#2D3230]"
+                              : "text-gray-500 hover:bg-[#F5F1E8]"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="data_prazo" className={labelClass}>
+                    Data prazo
+                  </label>
+                  <input
+                    id="data_prazo"
+                    name="data_prazo"
+                    type="date"
+                    defaultValue={tarefa?.data_prazo?.slice(0, 10) ?? ""}
+                    className={fieldClass}
+                  />
+                </div>
+
+                {temAgenda && (
+                  <div>
+                    <span className={labelClass}>Agenda</span>
+                    <input
+                      name="agenda_data"
+                      type="date"
+                      aria-label="Data da agenda"
+                      defaultValue={tarefa?.agenda_data?.slice(0, 10) ?? ""}
+                      className={fieldClass}
+                    />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <input
+                        name="agenda_hora_inicio"
+                        type="time"
+                        aria-label="Hora de início"
+                        defaultValue={
+                          tarefa?.agenda_hora_inicio?.slice(0, 5) ?? ""
+                        }
+                        className={fieldClass}
+                      />
+                      <input
+                        name="agenda_hora_fim"
+                        type="time"
+                        aria-label="Hora de fim"
+                        defaultValue={tarefa?.agenda_hora_fim?.slice(0, 5) ?? ""}
+                        className={fieldClass}
+                      />
+                    </div>
+                  </div>
                 )}
-              </div>
 
-              <div>
-                <label htmlFor="descricao" className={labelClass}>
-                  Descrição
-                </label>
-                <textarea
-                  id="descricao"
-                  name="descricao"
-                  rows={6}
-                  className={fieldClass}
-                />
+                <div className="space-y-3">
+                  {VINCULOS.map(({ tipo, label, coluna }) => {
+                    if (coluna !== "projeto_id" && !colunas.includes(coluna)) {
+                      return null;
+                    }
+                    const atual = vinculoAtual(tarefa, tipo);
+                    return (
+                      <div key={tipo}>
+                        <label htmlFor={`${tipo}_id`} className={labelClass}>
+                          {label}
+                        </label>
+                        <select
+                          id={`${tipo}_id`}
+                          name={`${tipo}_id`}
+                          defaultValue={atual}
+                          className={fieldClass}
+                        >
+                          <option value="">Sem vínculo</option>
+                          {vinculos[tipo].map((opcao) => (
+                            <option key={opcao.id} value={opcao.id}>
+                              {opcao.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
+            </div>
 
-              <TagInput
-                disponiveis={tags}
-                selecionadas={tagIds}
-                novas={novasTags}
-                onToggle={toggleTag}
-                onAdd={(nome) =>
-                  setNovasTags((prev) =>
-                    prev.includes(nome) ? prev : [...prev, nome],
-                  )
-                }
-                onRemoveNova={(nome) =>
-                  setNovasTags((prev) => prev.filter((n) => n !== nome))
-                }
+            <div className="mt-6 flex items-center gap-3 border-t border-black/5 pt-4">
+              <SubmitButton
+                label={editando ? "Salvar alterações" : "Criar tarefa"}
+              />
+              <button
+                type="button"
+                onClick={close}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-white"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+
+          {tarefa && (
+            <div className="mt-4 flex flex-wrap items-start gap-4 border-t border-black/5 pt-4">
+              <DangerBloco
+                acao={arquivarTarefa}
+                palavra="ARQUIVAR"
+                rotulo="Arquivar"
+                descricao="A tarefa sai do painel e da listagem; os dados são mantidos."
+                tarefaId={tarefa.id}
+                tone="argila"
+                onDone={close}
+              />
+              <DangerBloco
+                acao={excluirTarefa}
+                palavra="EXCLUIR"
+                rotulo="Excluir"
+                descricao="Remove a tarefa e suas subtarefas permanentemente."
+                tarefaId={tarefa.id}
+                tone="red"
+                onDone={close}
               />
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <span className={labelClass}>Status</span>
-                <div className="mt-1.5 space-y-1.5">
-                  {STATUS_OPTIONS.map((option) => {
-                    const ativo = status === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setStatus(option.value)}
-                        aria-pressed={ativo}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
-                          ativo
-                            ? "border-[#24483F] bg-[#24483F] text-white"
-                            : "border-black/10 bg-white text-[#2D3230] hover:border-[#24483F]/40"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <span className={labelClass}>Prioridade</span>
-                <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-lg border border-black/10 bg-white p-1">
-                  {PRIORIDADE_OPTIONS.map((option) => {
-                    const ativo = prioridade === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setPrioridade(option.value)}
-                        aria-pressed={ativo}
-                        className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-                          ativo
-                            ? "bg-[#E3BD62] text-[#2D3230]"
-                            : "text-gray-500 hover:bg-[#F5F1E8]"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="data_prazo" className={labelClass}>
-                  Data prazo
-                </label>
-                <input
-                  id="data_prazo"
-                  name="data_prazo"
-                  type="date"
-                  className={fieldClass}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="projeto_id" className={labelClass}>
-                  Projeto
-                </label>
-                <select
-                  id="projeto_id"
-                  name="projeto_id"
-                  defaultValue=""
-                  className={fieldClass}
-                >
-                  <option value="">Sem vínculo</option>
-                  {projetos.map((projeto) => (
-                    <option key={projeto.id} value={projeto.id}>
-                      {projeto.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {temProdutoCol && (
-                <div>
-                  <label htmlFor="produto_id" className={labelClass}>
-                    Produto
-                  </label>
-                  <select
-                    id="produto_id"
-                    name="produto_id"
-                    defaultValue=""
-                    className={fieldClass}
-                  >
-                    <option value="">Sem vínculo</option>
-                    {produtos.map((produto) => (
-                      <option key={produto.id} value={produto.id}>
-                        {produto.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center gap-3 border-t border-black/5 pt-4">
-            <SubmitButton />
-            <button
-              type="button"
-              onClick={close}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-white"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+          )}
+        </div>
       </div>
     </div>
   );

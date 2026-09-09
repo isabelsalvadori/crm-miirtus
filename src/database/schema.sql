@@ -206,6 +206,11 @@ create table if not exists tarefas (
   produto_id uuid references produtos (id) on delete set null,
   fase_id uuid references fases_projeto (id) on delete set null,
   responsavel_id uuid references pessoas (id) on delete set null,
+  -- vínculos opcionais de contexto (migração 0006)
+  evento_id uuid references eventos (id) on delete set null,
+  cliente_id uuid references pessoas (id) on delete set null,
+  ideia_id uuid references ideias (id) on delete set null,
+  campanha_id uuid references campanhas (id) on delete set null,
   agenda_data date,
   agenda_hora_inicio time,
   agenda_hora_fim time,
@@ -587,6 +592,10 @@ create index if not exists idx_tarefas_projeto on tarefas (projeto_id);
 create index if not exists idx_tarefas_produto on tarefas (produto_id);
 create index if not exists idx_tarefas_fase on tarefas (fase_id);
 create index if not exists idx_tarefas_responsavel on tarefas (responsavel_id);
+create index if not exists idx_tarefas_evento on tarefas (evento_id);
+create index if not exists idx_tarefas_cliente on tarefas (cliente_id);
+create index if not exists idx_tarefas_ideia on tarefas (ideia_id);
+create index if not exists idx_tarefas_campanha on tarefas (campanha_id);
 create index if not exists idx_notas_entidade on notas (entidade_tipo, entidade_id);
 create index if not exists idx_ideias_convertida on ideias (convertida_em_tipo, convertida_em_id);
 create index if not exists idx_conteudos_produto on conteudos (produto_id);

@@ -8,9 +8,9 @@ import { QuickNoteModal } from "@/app/dashboard/notas/components/QuickNoteModal"
 import {
   marcarTarefaConcluida,
   type NotaHoje,
-  type OptionLite,
   type TagLite,
   type TarefaHoje,
+  type VinculoOpcoes,
 } from "../actions";
 import { TarefaModal } from "./TarefaModal";
 
@@ -95,10 +95,12 @@ function TarefaRow({
   tarefa,
   modo,
   atrasada,
+  onEditar,
 }: {
   tarefa: TarefaHoje;
   modo: "agenda" | "prazo";
   atrasada?: boolean;
+  onEditar: (tarefa: TarefaHoje) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [concluida, setConcluida] = useState(false);
@@ -142,14 +144,15 @@ function TarefaRow({
         </span>
       )}
 
-      <Link
-        href={`/dashboard/tarefas?tarefa=${tarefa.id}`}
-        className={`min-w-0 flex-1 truncate text-sm transition-colors hover:text-[#24483F] ${
+      <button
+        type="button"
+        onClick={() => onEditar(tarefa)}
+        className={`min-w-0 flex-1 truncate text-left text-sm transition-colors hover:text-[#24483F] ${
           concluida ? "text-gray-400 line-through" : "text-[#2D3230]"
         }`}
       >
         {tarefa.titulo}
-      </Link>
+      </button>
 
       <div className="flex shrink-0 items-center gap-2">
         {tarefa.prioridade && (
@@ -206,10 +209,9 @@ type Props = {
   prioridades: TarefaHoje[];
   aguardando: TarefaHoje[];
   notas: NotaHoje[];
-  projetos: OptionLite[];
-  produtos: OptionLite[];
+  vinculos: VinculoOpcoes;
   tags: TagLite[];
-  temProdutoCol: boolean;
+  colunas: string[];
 };
 
 export function HojeView({
@@ -221,14 +223,14 @@ export function HojeView({
   prioridades,
   aguardando,
   notas,
-  projetos,
-  produtos,
+  vinculos,
   tags,
-  temProdutoCol,
+  colunas,
 }: Props) {
   const router = useRouter();
   const [quickAberto, setQuickAberto] = useState(false);
-  const [tarefaAberta, setTarefaAberta] = useState(false);
+  const [novaAberta, setNovaAberta] = useState(false);
+  const [emEdicao, setEmEdicao] = useState<TarefaHoje | null>(null);
 
   function fecharQuick() {
     setQuickAberto(false);
@@ -247,7 +249,7 @@ export function HojeView({
         itens={agenda}
       >
         {agenda.map((t) => (
-          <TarefaRow key={t.id} tarefa={t} modo="agenda" />
+          <TarefaRow key={t.id} tarefa={t} modo="agenda" onEditar={setEmEdicao} />
         ))}
       </Secao>
 
@@ -258,7 +260,7 @@ export function HojeView({
         acao={
           <button
             type="button"
-            onClick={() => setTarefaAberta(true)}
+            onClick={() => setNovaAberta(true)}
             className="rounded-lg border border-[#24483F]/30 bg-white px-2.5 py-1 text-xs font-semibold text-[#24483F] transition-colors hover:bg-[#24483F]/5"
           >
             + Nova tarefa
@@ -266,14 +268,20 @@ export function HojeView({
         }
       >
         {prazoHoje.map((t) => (
-          <TarefaRow key={t.id} tarefa={t} modo="prazo" />
+          <TarefaRow key={t.id} tarefa={t} modo="prazo" onEditar={setEmEdicao} />
         ))}
       </Secao>
 
       {atrasadas.length > 0 && (
         <Secao titulo="Atrasadas" itens={atrasadas} danger>
           {atrasadas.map((t) => (
-            <TarefaRow key={t.id} tarefa={t} modo="prazo" atrasada />
+            <TarefaRow
+              key={t.id}
+              tarefa={t}
+              modo="prazo"
+              atrasada
+              onEditar={setEmEdicao}
+            />
           ))}
         </Secao>
       )}
@@ -281,7 +289,12 @@ export function HojeView({
       {emAndamento.length > 0 && (
         <Secao titulo="Em andamento" itens={emAndamento}>
           {emAndamento.map((t) => (
-            <TarefaRow key={t.id} tarefa={t} modo="prazo" />
+            <TarefaRow
+              key={t.id}
+              tarefa={t}
+              modo="prazo"
+              onEditar={setEmEdicao}
+            />
           ))}
         </Secao>
       )}
@@ -289,7 +302,12 @@ export function HojeView({
       {prioridades.length > 0 && (
         <Secao titulo="Prioridades" itens={prioridades}>
           {prioridades.map((t) => (
-            <TarefaRow key={t.id} tarefa={t} modo="prazo" />
+            <TarefaRow
+              key={t.id}
+              tarefa={t}
+              modo="prazo"
+              onEditar={setEmEdicao}
+            />
           ))}
         </Secao>
       )}
@@ -297,7 +315,12 @@ export function HojeView({
       {aguardando.length > 0 && (
         <Secao titulo="Aguardando" itens={aguardando}>
           {aguardando.map((t) => (
-            <TarefaRow key={t.id} tarefa={t} modo="prazo" />
+            <TarefaRow
+              key={t.id}
+              tarefa={t}
+              modo="prazo"
+              onEditar={setEmEdicao}
+            />
           ))}
         </Secao>
       )}
@@ -325,13 +348,23 @@ export function HojeView({
       </section>
 
       {quickAberto && <QuickNoteModal onClose={fecharQuick} />}
-      {tarefaAberta && (
+      {novaAberta && (
         <TarefaModal
-          projetos={projetos}
-          produtos={produtos}
+          tarefa={null}
+          vinculos={vinculos}
           tags={tags}
-          temProdutoCol={temProdutoCol}
-          onClose={() => setTarefaAberta(false)}
+          colunas={colunas}
+          onClose={() => setNovaAberta(false)}
+        />
+      )}
+      {emEdicao && (
+        <TarefaModal
+          key={emEdicao.id}
+          tarefa={emEdicao}
+          vinculos={vinculos}
+          tags={tags}
+          colunas={colunas}
+          onClose={() => setEmEdicao(null)}
         />
       )}
     </div>

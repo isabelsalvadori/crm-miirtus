@@ -1,21 +1,33 @@
 import { createClient } from "@/lib/supabase/server";
-import { detectTarefaColumns } from "../tarefas/db";
-import type { NotaHoje, OptionLite, TagLite, TarefaHoje } from "./actions";
+import type {
+  NotaHoje,
+  OptionLite,
+  TagLite,
+  TarefaHoje,
+  VinculoOpcoes,
+} from "./actions";
+import { detectarColunasTarefa } from "./db";
 import { HojeView } from "./components/HojeView";
 
 const TZ = "America/Sao_Paulo";
 
-// Colunas garantidas em `tarefas`. As de agenda vieram na migração 0003 e
-// podem não existir; são detectadas em runtime e o painel degrada sem elas.
-const TAREFA_BASE_COLS = "id, titulo, status, prioridade, data_prazo";
-const AGENDA_COLS = [
+// Sempre presentes em `tarefas`.
+const TAREFA_BASE_COLS =
+  "id, titulo, descricao, status, prioridade, data_prazo, projeto_id";
+
+// Opcionais (migrações 0003/0006) — só entram no select se existirem.
+const COLS_OPCIONAIS = [
+  "produto_id",
+  "evento_id",
+  "cliente_id",
+  "ideia_id",
+  "campanha_id",
   "agenda_data",
   "agenda_hora_inicio",
   "agenda_hora_fim",
 ] as const;
 
 function dataISO(date: Date): string {
-  // YYYY-MM-DD no fuso de São Paulo
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
@@ -46,20 +58,46 @@ function ordenarPorHora(a: TarefaHoje, b: TarefaHoje): number {
 }
 
 function mapTarefa(row: Record<string, unknown>): TarefaHoje {
+  const rels = (row.tarefa_tag as { tag_id: string }[] | null) ?? [];
   return {
     id: row.id as string,
     titulo: row.titulo as string,
+    descricao: (row.descricao as string | null) ?? null,
     status: (row.status as string | null) ?? null,
     prioridade: (row.prioridade as string | null) ?? null,
     data_prazo: (row.data_prazo as string | null) ?? null,
     agenda_data: (row.agenda_data as string | null) ?? null,
     agenda_hora_inicio: (row.agenda_hora_inicio as string | null) ?? null,
     agenda_hora_fim: (row.agenda_hora_fim as string | null) ?? null,
+    projeto_id: (row.projeto_id as string | null) ?? null,
+    produto_id: (row.produto_id as string | null) ?? null,
+    evento_id: (row.evento_id as string | null) ?? null,
+    cliente_id: (row.cliente_id as string | null) ?? null,
+    ideia_id: (row.ideia_id as string | null) ?? null,
+    campanha_id: (row.campanha_id as string | null) ?? null,
+    tag_ids: rels.map((r) => r.tag_id),
   };
 }
 
 function toLista(res: { data: unknown }): TarefaHoje[] {
   return ((res.data ?? []) as Record<string, unknown>[]).map(mapTarefa);
+}
+
+async function opcoes(
+  supabase: ReturnType<typeof createClient>,
+  tabela: string,
+  coluna: "nome" | "titulo",
+): Promise<OptionLite[]> {
+  const { data } = await supabase
+    .from(tabela)
+    .select(`id, ${coluna}`)
+    .is("arquivado_em", null)
+    .order(coluna)
+    .limit(200);
+  return ((data ?? []) as Record<string, string>[]).map((row) => ({
+    id: row.id,
+    nome: row[coluna] || "(sem nome)",
+  }));
 }
 
 export default async function HojePage() {
@@ -70,12 +108,11 @@ export default async function HojePage() {
   const inicioHoje = `${hoje}T00:00:00`;
   const fimHoje = `${hoje}T23:59:59.999`;
 
-  const cols = await detectTarefaColumns(supabase);
+  const cols = await detectarColunasTarefa(supabase);
   const temAgenda = cols.has("agenda_data");
-  const select = [
-    TAREFA_BASE_COLS,
-    ...AGENDA_COLS.filter((c) => cols.has(c)),
-  ].join(", ");
+  const select =
+    [TAREFA_BASE_COLS, ...COLS_OPCIONAIS.filter((c) => cols.has(c))].join(", ") +
+    ", tarefa_tag(tag_id)";
 
   const base = () =>
     supabase
@@ -104,8 +141,12 @@ export default async function HojePage() {
     prioritariasRes,
     aguardandoRes,
     notasRes,
-    projetosRes,
-    produtosRes,
+    projetos,
+    produtos,
+    eventos,
+    clientes,
+    ideias,
+    campanhas,
     tagsRes,
   ] = await Promise.all([
     tarefasHojeQuery,
@@ -134,16 +175,12 @@ export default async function HojePage() {
       .gte("created_at", inicioHoje)
       .order("created_at", { ascending: false })
       .limit(50),
-    supabase
-      .from("projetos")
-      .select("id, nome")
-      .is("arquivado_em", null)
-      .order("nome"),
-    supabase
-      .from("produtos")
-      .select("id, nome")
-      .is("arquivado_em", null)
-      .order("nome"),
+    opcoes(supabase, "projetos", "nome"),
+    opcoes(supabase, "produtos", "nome"),
+    opcoes(supabase, "eventos", "nome"),
+    opcoes(supabase, "pessoas", "nome"),
+    opcoes(supabase, "ideias", "titulo"),
+    opcoes(supabase, "campanhas", "nome"),
     supabase.from("tags").select("id, nome, cor").order("nome"),
   ]);
 
@@ -163,6 +200,15 @@ export default async function HojePage() {
     .sort(ordenarPorHora);
   const prazoHoje = tarefasHoje.filter((t) => t.agenda_data !== hoje);
 
+  const vinculos: VinculoOpcoes = {
+    projeto: projetos,
+    produto: produtos,
+    evento: eventos,
+    cliente: clientes,
+    ideia: ideias,
+    campanha: campanhas,
+  };
+
   return (
     <div className="mx-auto max-w-3xl">
       {erro ? (
@@ -179,10 +225,9 @@ export default async function HojePage() {
           prioridades={toLista(prioritariasRes)}
           aguardando={toLista(aguardandoRes)}
           notas={(notasRes.data ?? []) as NotaHoje[]}
-          projetos={(projetosRes.data ?? []) as OptionLite[]}
-          produtos={(produtosRes.data ?? []) as OptionLite[]}
+          vinculos={vinculos}
           tags={(tagsRes.data ?? []) as TagLite[]}
-          temProdutoCol={cols.has("produto_id")}
+          colunas={Array.from(cols)}
         />
       )}
     </div>
