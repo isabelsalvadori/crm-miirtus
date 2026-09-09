@@ -10,11 +10,7 @@ import {
   randomTagColor,
   slugify,
 } from "./constants";
-import {
-  invalidateTarefasExtCache,
-  stripExtKeys,
-  tarefasExtAvailable,
-} from "./db";
+import { detectTarefaColumns, pickExtPayload } from "./db";
 
 export type FormState = {
   ok?: boolean;
@@ -244,10 +240,11 @@ export async function createTarefa(
   }
 
   const supabase = createClient();
-  const ext = await tarefasExtAvailable(supabase);
-  const payload = ext
-    ? { ...parsed.data.base, ...parsed.data.ext }
-    : stripExtKeys(parsed.data.base);
+  const cols = await detectTarefaColumns(supabase);
+  const payload = {
+    ...parsed.data.base,
+    ...pickExtPayload(cols, parsed.data.ext),
+  };
 
   const { data, error } = await supabase
     .from("tarefas")
@@ -257,7 +254,6 @@ export async function createTarefa(
 
   if (error || !data) {
     console.error("Erro ao criar tarefa:", error);
-    invalidateTarefasExtCache();
     return { ok: false, error: describeDbError(error) };
   }
 
@@ -280,11 +276,10 @@ export async function updateTarefa(
   }
 
   const supabase = createClient();
-  const ext = await tarefasExtAvailable(supabase);
+  const cols = await detectTarefaColumns(supabase);
   const payload = {
-    ...(ext
-      ? { ...parsed.data.base, ...parsed.data.ext }
-      : stripExtKeys(parsed.data.base)),
+    ...parsed.data.base,
+    ...pickExtPayload(cols, parsed.data.ext),
     updated_at: new Date().toISOString(),
   };
 
@@ -292,7 +287,6 @@ export async function updateTarefa(
 
   if (error) {
     console.error("Erro ao editar tarefa:", error);
-    invalidateTarefasExtCache();
     return { ok: false, error: describeDbError(error) };
   }
 
@@ -302,6 +296,22 @@ export async function updateTarefa(
 
   revalidatePath("/dashboard/tarefas");
   redirect(`/dashboard/tarefas?tarefa=${id}&ok=atualizada`);
+}
+
+/** Move a tarefa para outra coluna do Kanban (atualiza o status). */
+export async function moverTarefa(id: string, status: string) {
+  if (!STATUS_VALUES.includes(status)) return;
+  const supabase = createClient();
+  await supabase
+    .from("tarefas")
+    .update({
+      status,
+      data_conclusao:
+        status === "concluida" ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  revalidatePath("/dashboard/tarefas");
 }
 
 export async function toggleSubtarefa(id: string, concluida: boolean) {

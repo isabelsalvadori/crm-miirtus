@@ -51,21 +51,18 @@ export const STATUS_BADGE_CLASS: Record<string, string> = {
   concluida: "bg-emerald-100 text-emerald-800",
 };
 
-/** Paleta para tags criadas inline. */
+/** Paleta para tags criadas inline (seletor de cor). */
 export const TAG_COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#f59e0b",
-  "#eab308",
-  "#84cc16",
-  "#22c55e",
-  "#14b8a6",
-  "#06b6d4",
-  "#3b82f6",
-  "#6366f1",
-  "#8b5cf6",
-  "#d946ef",
-  "#ec4899",
+  "#24483F",
+  "#B97059",
+  "#E3BD62",
+  "#2D3230",
+  "#6B7280",
+  "#3B82F6",
+  "#EF4444",
+  "#10B981",
+  "#8B5CF6",
+  "#F59E0B",
 ];
 
 export function randomTagColor(): string {

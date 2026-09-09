@@ -8,7 +8,7 @@ import {
   normalizeStatus,
   sanitizeSearch,
 } from "./constants";
-import { flattenTags, tarefaSelect, tarefasExtAvailable } from "./db";
+import { detectTarefaColumns, flattenTags, tarefaSelect } from "./db";
 import type {
   ContextoLink,
   OptionLite,
@@ -16,7 +16,7 @@ import type {
   TarefaFull,
   TarefaListItem,
 } from "./types";
-import { TarefasBoard } from "./_components/tarefas-board";
+import { KanbanBoard } from "./_components/kanban-board";
 import { TarefasFilters } from "./_components/tarefas-filters";
 import { TarefaModal } from "./_components/tarefa-modal";
 import { Toast } from "./_components/toast";
@@ -28,6 +28,7 @@ type SearchParams = {
   contexto?: string;
   tarefa?: string;
   nova?: string;
+  col?: string;
   ok?: string;
 };
 
@@ -37,7 +38,12 @@ export default async function TarefasPage({
   searchParams: SearchParams;
 }) {
   const supabase = createClient();
-  const ext = await tarefasExtAvailable(supabase);
+  const cols = await detectTarefaColumns(supabase);
+  const caps = {
+    agenda: cols.has("na_agenda"),
+    observacoes: cols.has("observacoes"),
+    produto: cols.has("produto_id"),
+  };
 
   const rawQuery = (searchParams.q ?? "").trim();
   const search = sanitizeSearch(rawQuery);
@@ -71,7 +77,7 @@ export default async function TarefasPage({
 
   let query = supabase
     .from("tarefas")
-    .select(tarefaSelect(ext, true))
+    .select(tarefaSelect(cols, true))
     .is("arquivado_em", null)
     .is("parent_id", null)
     .order("ordem", { ascending: true })
@@ -82,8 +88,8 @@ export default async function TarefasPage({
   if (prioridade) query = query.eq("prioridade", prioridade);
   if (contexto === "sem_vinculo") {
     query = query.is("projeto_id", null);
-    if (ext) query = query.is("produto_id", null);
-  } else if (contexto.startsWith("produto:") && ext) {
+    if (caps.produto) query = query.is("produto_id", null);
+  } else if (contexto.startsWith("produto:") && caps.produto) {
     query = query.eq("produto_id", contexto.slice("produto:".length));
   } else if (contexto.startsWith("projeto:")) {
     query = query.eq("projeto_id", contexto.slice("projeto:".length));
@@ -136,7 +142,7 @@ export default async function TarefasPage({
   if (tarefaId) {
     const { data: row } = await supabase
       .from("tarefas")
-      .select(tarefaSelect(ext, true))
+      .select(tarefaSelect(cols, true))
       .eq("id", tarefaId)
       .is("parent_id", null)
       .maybeSingle();
@@ -173,9 +179,13 @@ export default async function TarefasPage({
 
   const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] ?? null : null;
   const modalOpen = abrirNova || Boolean(tarefaAberta);
+  const defaultStatus =
+    searchParams.col && STATUS_VALUES.includes(searchParams.col)
+      ? searchParams.col
+      : undefined;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-[#24483F]">Tarefas</h2>
@@ -201,7 +211,7 @@ export default async function TarefasPage({
           Não foi possível carregar as tarefas. Recarregue a página.
         </div>
       ) : (
-        <TarefasBoard grupos={grupos} />
+        <KanbanBoard grupos={grupos} />
       )}
 
       {modalOpen && (
@@ -213,7 +223,8 @@ export default async function TarefasPage({
           produtos={produtos}
           projetos={projetos}
           tags={tags}
-          agendaEnabled={ext}
+          caps={caps}
+          defaultStatus={defaultStatus}
         />
       )}
     </div>

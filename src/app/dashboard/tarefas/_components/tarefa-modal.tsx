@@ -18,7 +18,7 @@ import type {
 } from "../types";
 import { PriorityFlag, StatusBadge, TagBadge } from "./badges";
 import { DangerActions } from "./danger-actions";
-import { TarefaFormFields } from "./tarefa-form-fields";
+import { TarefaFormFields, type TarefaCaps } from "./tarefa-form-fields";
 import { useMergeHref } from "./use-merge-href";
 
 const initialState: FormState = {};
@@ -30,7 +30,8 @@ type Props = {
   produtos: OptionLite[];
   projetos: OptionLite[];
   tags: TagLite[];
-  agendaEnabled: boolean;
+  caps: TarefaCaps;
+  defaultStatus?: string;
 };
 
 export function TarefaModal({
@@ -40,7 +41,8 @@ export function TarefaModal({
   produtos,
   projetos,
   tags,
-  agendaEnabled,
+  caps,
+  defaultStatus,
 }: Props) {
   const router = useRouter();
   const mergeHref = useMergeHref();
@@ -119,7 +121,8 @@ export function TarefaModal({
               produtos={produtos}
               projetos={projetos}
               tags={tags}
-              agendaEnabled={agendaEnabled}
+              caps={caps}
+              defaultStatus={defaultStatus}
               onCancel={
                 mode === "create" ? close : () => setEditing(false)
               }
@@ -158,7 +161,8 @@ function EditForm({
   produtos,
   projetos,
   tags,
-  agendaEnabled,
+  caps,
+  defaultStatus,
   onCancel,
 }: {
   tarefa: TarefaFull | null;
@@ -166,7 +170,8 @@ function EditForm({
   produtos: OptionLite[];
   projetos: OptionLite[];
   tags: TagLite[];
-  agendaEnabled: boolean;
+  caps: TarefaCaps;
+  defaultStatus?: string;
   onCancel: () => void;
 }) {
   const action = useMemo(
@@ -192,7 +197,8 @@ function EditForm({
         produtos={produtos}
         projetos={projetos}
         tags={tags}
-        agendaEnabled={agendaEnabled}
+        caps={caps}
+        defaultStatus={defaultStatus}
         fieldErrors={state.fieldErrors}
       />
 

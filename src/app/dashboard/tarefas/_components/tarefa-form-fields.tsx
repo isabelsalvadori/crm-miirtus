@@ -16,13 +16,20 @@ const fieldClass =
 const labelClass = "block text-sm font-medium text-gray-700";
 const errorClass = "mt-1 text-xs text-red-600";
 
+export type TarefaCaps = {
+  agenda: boolean;
+  observacoes: boolean;
+  produto: boolean;
+};
+
 export function TarefaFormFields({
   tarefa,
   subtarefas,
   produtos,
   projetos,
   tags,
-  agendaEnabled,
+  caps,
+  defaultStatus,
   fieldErrors,
 }: {
   tarefa: TarefaFull | null;
@@ -30,7 +37,8 @@ export function TarefaFormFields({
   produtos: OptionLite[];
   projetos: OptionLite[];
   tags: TagLite[];
-  agendaEnabled: boolean;
+  caps: TarefaCaps;
+  defaultStatus?: string;
   fieldErrors?: Record<string, string>;
 }) {
   const [draftTags, setDraftTags] = useState<DraftTag[]>(
@@ -95,7 +103,7 @@ export function TarefaFormFields({
           <select
             id="status"
             name="status"
-            defaultValue={tarefa?.status ?? "a_fazer"}
+            defaultValue={tarefa?.status ?? defaultStatus ?? "a_fazer"}
             className={fieldClass}
           >
             {STATUS_OPTIONS.map((o) => (
@@ -144,17 +152,17 @@ export function TarefaFormFields({
             name="na_agenda"
             checked={naAgenda}
             onChange={(event) => setNaAgenda(event.target.checked)}
-            disabled={!agendaEnabled}
+            disabled={!caps.agenda}
             className="h-4 w-4 rounded border-gray-300 text-[#24483F] focus:ring-[#24483F]"
           />
           Adicionar à agenda
         </label>
-        {!agendaEnabled && (
+        {!caps.agenda && (
           <p className="mt-1 text-xs text-gray-400">
             Disponível após aplicar a migração 0003.
           </p>
         )}
-        {agendaEnabled && naAgenda && (
+        {caps.agenda && naAgenda && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="agenda_inicio" className="text-xs text-gray-500">
@@ -196,7 +204,7 @@ export function TarefaFormFields({
             id="produto_id"
             name="produto_id"
             defaultValue={tarefa?.produto_id ?? ""}
-            disabled={!agendaEnabled}
+            disabled={!caps.produto}
             className={fieldClass}
           >
             <option value="">Nenhum</option>
@@ -243,9 +251,14 @@ export function TarefaFormFields({
           name="observacoes"
           rows={2}
           defaultValue={tarefa?.observacoes ?? ""}
-          disabled={!agendaEnabled}
+          disabled={!caps.observacoes}
           className={fieldClass}
         />
+        {!caps.observacoes && (
+          <p className="mt-1 text-xs text-gray-400">
+            Disponível após aplicar a migração 0003 (coluna observacoes).
+          </p>
+        )}
       </div>
 
       <div>
