@@ -145,18 +145,18 @@ export async function MovimentacoesTabPage({
             {total} {total === 1 ? "registro" : "registros"} em {titulo.toLowerCase()}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link
             href="?nova=receita"
             scroll={false}
-            className="rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            className="rounded-lg bg-[#24483F] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1c3a33]"
           >
             + Nova Receita
           </Link>
           <Link
             href="?nova=despesa"
             scroll={false}
-            className="rounded-lg bg-[#24483F] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1c3a33]"
+            className="rounded-md border border-black/10 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
           >
             + Nova Despesa
           </Link>

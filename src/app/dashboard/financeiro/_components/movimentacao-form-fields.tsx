@@ -9,6 +9,7 @@ import {
   toDateInputValue,
 } from "../constants";
 import type { CategoriaLite, MovimentacaoFull, OptionLite } from "../types";
+import { MoedaInput } from "./moeda-input";
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-[#24483F] focus:ring-1 focus:ring-[#24483F]";
@@ -84,14 +85,11 @@ export function MovimentacaoFormFields({
           <label htmlFor="valor" className={labelClass}>
             Valor (R$) <span className="text-red-500">*</span>
           </label>
-          <input
+          <MoedaInput
             id="valor"
             name="valor"
-            type="number"
-            min="0.01"
-            step="0.01"
+            defaultValue={mov?.valor}
             required
-            defaultValue={mov?.valor ? String(mov.valor) : ""}
             className={fieldClass}
           />
           {fieldErrors?.valor && <p className={errorClass}>{fieldErrors.valor}</p>}
