@@ -11,10 +11,12 @@ export function TarefaCard({
 }) {
   const vencido = isVencido(tarefa.data_prazo, tarefa.status);
   const concluida = tarefa.status === "concluida";
+  const subResumo = tarefa.subtarefasResumo;
   const hasMeta =
     Boolean(tarefa.contexto) ||
     Boolean(tarefa.data_prazo) ||
-    tarefa.tags.length > 0;
+    tarefa.tags.length > 0 ||
+    Boolean(subResumo && subResumo.total > 0);
 
   return (
     <div
@@ -56,6 +58,11 @@ export function TarefaCard({
           {tarefa.tags.map((tag) => (
             <TagBadge key={tag.id} nome={tag.nome} cor={tag.cor} />
           ))}
+          {subResumo && subResumo.total > 0 && (
+            <span className="text-gray-500">
+              ☑ {subResumo.concluidas}/{subResumo.total}
+            </span>
+          )}
         </div>
       )}
     </div>

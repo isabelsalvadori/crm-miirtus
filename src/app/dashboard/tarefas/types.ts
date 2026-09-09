@@ -14,6 +14,8 @@ export type TarefaListItem = {
   produto_id: string | null;
   tags: TagLite[];
   contexto: ContextoLink;
+  /** Resumo de subtarefas (concluídas/total); opcional, só quando calculado pela página. */
+  subtarefasResumo?: { concluidas: number; total: number } | null;
 };
 
 export type TarefaFull = {

@@ -23,6 +23,7 @@ export function TarefaFormFields({
   projetos,
   tags,
   defaultStatus,
+  lockedProjeto,
   fieldErrors,
 }: {
   tarefa: TarefaFull | null;
@@ -31,6 +32,8 @@ export function TarefaFormFields({
   projetos: OptionLite[];
   tags: TagLite[];
   defaultStatus?: string;
+  /** Quando definido, o campo "Projeto relacionado" some e a tarefa já nasce vinculada a ele. */
+  lockedProjeto?: OptionLite | null;
   fieldErrors?: Record<string, string>;
 }) {
   const [draftTags, setDraftTags] = useState<DraftTag[]>(
@@ -247,24 +250,34 @@ export function TarefaFormFields({
           </select>
         </div>
 
-        <div>
-          <label htmlFor="projeto_id" className={labelClass}>
-            Projeto relacionado
-          </label>
-          <select
-            id="projeto_id"
-            name="projeto_id"
-            defaultValue={tarefa?.projeto_id ?? ""}
-            className={fieldClass}
-          >
-            <option value="">Nenhum</option>
-            {projetos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-        </div>
+        {lockedProjeto ? (
+          <div>
+            <input type="hidden" name="projeto_id" value={lockedProjeto.id} />
+            <span className={labelClass}>Projeto</span>
+            <p className="mt-1 rounded-lg border border-black/10 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              {lockedProjeto.nome}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="projeto_id" className={labelClass}>
+              Projeto relacionado
+            </label>
+            <select
+              id="projeto_id"
+              name="projeto_id"
+              defaultValue={tarefa?.projeto_id ?? ""}
+              className={fieldClass}
+            >
+              <option value="">Nenhum</option>
+              {projetos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <span className={labelClass}>Tags</span>

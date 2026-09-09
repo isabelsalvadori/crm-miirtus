@@ -218,6 +218,18 @@ async function syncSubtarefas(
   }
 }
 
+/** Para onde redirecionar após salvar/arquivar/excluir (padrão: listagem de tarefas). */
+function redirectToFrom(formData: FormData): string {
+  return String(formData.get("redirect_to") ?? "").trim() || "/dashboard/tarefas";
+}
+
+/** Revalida a listagem e o perfil do projeto, para o progresso refletir a mudança. */
+function revalidarProjeto(projetoId: string | null | undefined) {
+  if (!projetoId) return;
+  revalidatePath("/dashboard/projetos");
+  revalidatePath(`/dashboard/projetos/${projetoId}`);
+}
+
 function describeDbError(error: {
   message?: string;
   details?: string | null;
@@ -262,8 +274,10 @@ export async function createTarefa(
   await syncTarefaTags(supabase, data.id, tagIds);
   await syncSubtarefas(supabase, data.id, parsed.data.subtarefas);
 
+  const redirectTo = redirectToFrom(formData);
   revalidatePath("/dashboard/tarefas");
-  redirect("/dashboard/tarefas?ok=criada");
+  revalidarProjeto(parsed.data.base.projeto_id as string | null);
+  redirect(`${redirectTo}?ok=criada`);
 }
 
 export async function updateTarefa(
@@ -277,6 +291,12 @@ export async function updateTarefa(
   }
 
   const supabase = createClient();
+  const { data: before } = await supabase
+    .from("tarefas")
+    .select("projeto_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const cols = await detectTarefaColumns(supabase);
   const payload = {
     ...parsed.data.base,
@@ -295,15 +315,18 @@ export async function updateTarefa(
   await syncTarefaTags(supabase, id, tagIds);
   await syncSubtarefas(supabase, id, parsed.data.subtarefas);
 
+  const redirectTo = redirectToFrom(formData);
   revalidatePath("/dashboard/tarefas");
-  redirect(`/dashboard/tarefas?tarefa=${id}&ok=atualizada`);
+  revalidarProjeto(before?.projeto_id as string | null);
+  revalidarProjeto(parsed.data.base.projeto_id as string | null);
+  redirect(`${redirectTo}?tarefa=${id}&ok=atualizada`);
 }
 
 /** Move a tarefa para outra coluna do Kanban (atualiza o status). */
 export async function moverTarefa(id: string, status: string) {
   if (!STATUS_VALUES.includes(status)) return;
   const supabase = createClient();
-  await supabase
+  const { data } = await supabase
     .from("tarefas")
     .update({
       status,
@@ -311,8 +334,11 @@ export async function moverTarefa(id: string, status: string) {
         status === "concluida" ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("projeto_id")
+    .maybeSingle();
   revalidatePath("/dashboard/tarefas");
+  revalidarProjeto(data?.projeto_id as string | null);
 }
 
 export async function toggleSubtarefa(id: string, concluida: boolean) {
@@ -340,6 +366,12 @@ export async function arquivarTarefa(
   }
 
   const supabase = createClient();
+  const { data: before } = await supabase
+    .from("tarefas")
+    .select("projeto_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("tarefas")
     .update({ arquivado_em: new Date().toISOString() })
@@ -350,8 +382,10 @@ export async function arquivarTarefa(
     return { ok: false, error: "Não foi possível arquivar. Tente novamente." };
   }
 
+  const redirectTo = redirectToFrom(formData);
   revalidatePath("/dashboard/tarefas");
-  redirect("/dashboard/tarefas?ok=arquivada");
+  revalidarProjeto(before?.projeto_id as string | null);
+  redirect(`${redirectTo}?ok=arquivada`);
 }
 
 export async function excluirTarefa(
@@ -366,6 +400,12 @@ export async function excluirTarefa(
   }
 
   const supabase = createClient();
+  const { data: before } = await supabase
+    .from("tarefas")
+    .select("projeto_id")
+    .eq("id", id)
+    .maybeSingle();
+
   // Subtarefas somem junto (parent_id ... on delete cascade).
   const { error } = await supabase.from("tarefas").delete().eq("id", id);
 
@@ -374,6 +414,8 @@ export async function excluirTarefa(
     return { ok: false, error: "Não foi possível excluir. Tente novamente." };
   }
 
+  const redirectTo = redirectToFrom(formData);
   revalidatePath("/dashboard/tarefas");
-  redirect("/dashboard/tarefas?ok=excluida");
+  revalidarProjeto(before?.projeto_id as string | null);
+  redirect(`${redirectTo}?ok=excluida`);
 }

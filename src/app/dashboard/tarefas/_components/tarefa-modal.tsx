@@ -36,6 +36,9 @@ type Props = {
   projetos: OptionLite[];
   tags: TagLite[];
   defaultStatus?: string;
+  /** Quando aberto a partir do perfil de um projeto: trava o vínculo e redireciona de volta pra lá. */
+  lockedProjeto?: OptionLite | null;
+  redirectTo?: string;
 };
 
 export function TarefaModal({
@@ -46,6 +49,8 @@ export function TarefaModal({
   projetos,
   tags,
   defaultStatus,
+  lockedProjeto,
+  redirectTo,
 }: Props) {
   const router = useRouter();
   const mergeHref = useMergeHref();
@@ -125,6 +130,8 @@ export function TarefaModal({
               projetos={projetos}
               tags={tags}
               defaultStatus={defaultStatus}
+              lockedProjeto={lockedProjeto}
+              redirectTo={redirectTo}
               onCancel={mode === "create" ? close : () => setEditing(false)}
             />
           ) : (
@@ -133,6 +140,7 @@ export function TarefaModal({
                 tarefa={tarefa}
                 subtarefas={subtarefas}
                 onEdit={() => setEditing(true)}
+                redirectTo={redirectTo}
               />
             )
           )}
@@ -162,6 +170,8 @@ function EditForm({
   projetos,
   tags,
   defaultStatus,
+  lockedProjeto,
+  redirectTo,
   onCancel,
 }: {
   tarefa: TarefaFull | null;
@@ -170,6 +180,8 @@ function EditForm({
   projetos: OptionLite[];
   tags: TagLite[];
   defaultStatus?: string;
+  lockedProjeto?: OptionLite | null;
+  redirectTo?: string;
   onCancel: () => void;
 }) {
   const action = useMemo(
@@ -180,6 +192,7 @@ function EditForm({
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
+      {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
       {state.error && (
         <p
           role="alert"
@@ -196,6 +209,7 @@ function EditForm({
         projetos={projetos}
         tags={tags}
         defaultStatus={defaultStatus}
+        lockedProjeto={lockedProjeto}
         fieldErrors={state.fieldErrors}
       />
 
@@ -217,10 +231,12 @@ function ViewTarefa({
   tarefa,
   subtarefas,
   onEdit,
+  redirectTo,
 }: {
   tarefa: TarefaFull;
   subtarefas: SubtarefaItem[];
   onEdit: () => void;
+  redirectTo?: string;
 }) {
   const vencido = isVencido(tarefa.data_prazo, tarefa.status);
   const agenda =
@@ -331,7 +347,7 @@ function ViewTarefa({
         </button>
       </div>
 
-      <DangerActions tarefaId={tarefa.id} />
+      <DangerActions tarefaId={tarefa.id} redirectTo={redirectTo} />
     </div>
   );
 }
