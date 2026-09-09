@@ -123,9 +123,6 @@ export default async function ClientePerfilPage({
         )}
       </div>
 
-      {/* Ações destrutivas */}
-      <DangerActions clienteId={cliente.id as string} arquivado={arquivado} />
-
       {/* Seções futuras */}
       <PlaceholderSection
         title="Linha do tempo"
@@ -139,6 +136,9 @@ export default async function ClientePerfilPage({
         title="Notas"
         description="As notas registradas para este cliente aparecerão aqui."
       />
+
+      {/* Ações destrutivas — no fim absoluto da página */}
+      <DangerActions clienteId={cliente.id as string} arquivado={arquivado} />
     </div>
   );
 }
