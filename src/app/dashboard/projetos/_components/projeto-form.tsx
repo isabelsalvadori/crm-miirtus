@@ -52,6 +52,13 @@ export function ProjetoForm({
 }: ProjetoFormProps) {
   const [state, formAction] = useFormState(action, initialState);
   const [produtoIds, setProdutoIds] = useState<string[]>(defaults.produtoIds ?? []);
+  const [dataFimPrevista, setDataFimPrevista] = useState(
+    toDateInputValue(defaults.data_fim_prevista),
+  );
+  // Em edição, um prazo já nulo nasce marcado como indefinido; em criação, começa desmarcado.
+  const [prazoIndefinido, setPrazoIndefinido] = useState(
+    defaults.data_fim_prevista !== undefined && !defaults.data_fim_prevista,
+  );
 
   function toggleProduto(id: string) {
     setProdutoIds((prev) =>
@@ -166,15 +173,32 @@ export function ProjetoForm({
         </div>
 
         <div>
-          <label htmlFor="data_fim_prevista" className={labelClass}>
-            Prazo
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="data_fim_prevista" className={labelClass}>
+              Prazo
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+              <input
+                type="checkbox"
+                checked={prazoIndefinido}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setPrazoIndefinido(checked);
+                  if (checked) setDataFimPrevista("");
+                }}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-[#24483F] focus:ring-[#24483F]"
+              />
+              Prazo indefinido
+            </label>
+          </div>
           <input
             id="data_fim_prevista"
             name="data_fim_prevista"
             type="date"
-            defaultValue={toDateInputValue(defaults.data_fim_prevista)}
-            className={fieldClass}
+            value={dataFimPrevista}
+            onChange={(event) => setDataFimPrevista(event.target.value)}
+            disabled={prazoIndefinido}
+            className={`${fieldClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}
           />
         </div>
       </div>

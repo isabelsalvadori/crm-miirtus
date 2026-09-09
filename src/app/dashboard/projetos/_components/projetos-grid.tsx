@@ -40,7 +40,7 @@ export function ProjetosGrid({ projetos }: { projetos: ProjetoListItem[] }) {
               <ProgressBar percentual={projeto.progresso.percentual} size="sm" />
             </div>
 
-            {projeto.data_fim_prevista && (
+            {projeto.data_fim_prevista ? (
               <p
                 className={`mt-3 text-xs ${
                   vencido ? "font-semibold text-red-600" : "text-gray-500"
@@ -49,6 +49,8 @@ export function ProjetosGrid({ projetos }: { projetos: ProjetoListItem[] }) {
                 {vencido ? "Venceu " : "Prazo "}
                 {formatData(projeto.data_fim_prevista)}
               </p>
+            ) : (
+              <p className="mt-3 text-xs italic text-gray-300">Prazo indefinido</p>
             )}
 
             {projeto.produtos.length > 0 && (

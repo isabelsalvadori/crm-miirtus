@@ -254,16 +254,18 @@ export default async function ProjetoPerfilPage({
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-gray-500">Prazo</dt>
-            <dd
-              className={`mt-0.5 text-sm ${
-                vencido ? "font-semibold text-red-600" : "text-gray-800"
-              }`}
-            >
-              {projeto.data_fim_prevista
-                ? formatData(projeto.data_fim_prevista as string)
-                : "—"}
-              {vencido && " (vencido)"}
-            </dd>
+            {projeto.data_fim_prevista ? (
+              <dd
+                className={`mt-0.5 text-sm ${
+                  vencido ? "font-semibold text-red-600" : "text-gray-800"
+                }`}
+              >
+                {formatData(projeto.data_fim_prevista as string)}
+                {vencido && " (vencido)"}
+              </dd>
+            ) : (
+              <dd className="mt-0.5 text-sm italic text-gray-300">Prazo indefinido</dd>
+            )}
           </div>
         </dl>
 
