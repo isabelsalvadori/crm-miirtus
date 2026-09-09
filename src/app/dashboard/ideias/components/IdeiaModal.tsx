@@ -4,17 +4,30 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import {
   atualizarIdeia,
+  converterIdeia,
   criarIdeia,
+  type ConvertivelTipo,
   type FormState,
   type Ideia,
 } from "../actions";
 
 const STATUS_OPTIONS = [
-  { value: "nova", label: "Nova" },
-  { value: "em_analise", label: "Em análise" },
+  { value: "caixa_de_entrada", label: "Caixa de entrada" },
+  { value: "analisando", label: "Analisando" },
+  { value: "talvez", label: "Talvez" },
   { value: "aprovada", label: "Aprovada" },
-  { value: "implementada", label: "Implementada" },
   { value: "descartada", label: "Descartada" },
+];
+
+const CATEGORIA_OPTIONS = [
+  "Produto",
+  "Conteúdo",
+  "Evento",
+  "Ferramenta",
+  "Campanha",
+  "Melhoria",
+  "Parceria",
+  "Outro",
 ];
 
 const NIVEL_OPTIONS = [
@@ -22,6 +35,20 @@ const NIVEL_OPTIONS = [
   { value: "medio", label: "Médio" },
   { value: "alto", label: "Alto" },
 ];
+
+const CONVERSAO_OPTIONS: { tipo: ConvertivelTipo; label: string }[] = [
+  { tipo: "projeto", label: "Projeto" },
+  { tipo: "produto", label: "Produto" },
+  { tipo: "evento", label: "Evento" },
+  { tipo: "conteudo", label: "Conteúdo" },
+];
+
+const CONVERSAO_LABEL: Record<ConvertivelTipo, string> = {
+  projeto: "Projeto",
+  produto: "Produto",
+  evento: "Evento",
+  conteudo: "Conteúdo",
+};
 
 const initialState: FormState = {};
 
@@ -104,6 +131,81 @@ function NivelToggle({
   );
 }
 
+function ConverterSubmit({
+  tipo,
+  label,
+}: {
+  tipo: ConvertivelTipo;
+  label: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      name="tipo"
+      value={tipo}
+      disabled={pending}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[#24483F]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#24483F] transition-colors hover:bg-[#24483F]/5 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {pending && <Spinner />}
+      {label}
+    </button>
+  );
+}
+
+function ConverterControl({
+  ideiaId,
+  onDone,
+}: {
+  ideiaId: string;
+  onDone: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [state, formAction] = useFormState(
+    converterIdeia.bind(null, ideiaId),
+    initialState,
+  );
+
+  useEffect(() => {
+    if (state.ok) onDone();
+  }, [state, onDone]);
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-gray-500">
+          Converter em
+        </span>
+        <button
+          type="button"
+          onClick={() => setAberto((v) => !v)}
+          aria-expanded={aberto}
+          className="rounded-md px-1.5 py-0.5 text-xs font-semibold text-[#24483F] transition-colors hover:bg-[#24483F]/5"
+        >
+          {aberto ? "▾" : "→"}
+        </button>
+      </div>
+
+      {aberto && (
+        <form action={formAction} className="mt-2 flex flex-wrap gap-2">
+          {/* Cada botão envia o tipo via name/value ao disparar o submit. */}
+          {CONVERSAO_OPTIONS.map((option) => (
+            <ConverterSubmit
+              key={option.tipo}
+              tipo={option.tipo}
+              label={option.label}
+            />
+          ))}
+        </form>
+      )}
+
+      {state.error && (
+        <p className="mt-2 text-xs text-red-600">{state.error}</p>
+      )}
+    </div>
+  );
+}
+
 type Props = {
   ideia: Ideia | null;
   onClose: () => void;
@@ -113,7 +215,9 @@ export function IdeiaModal({ ideia, onClose }: Props) {
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  const [status, setStatus] = useState<string>(ideia?.status ?? "nova");
+  const [status, setStatus] = useState<string>(
+    ideia?.status ?? "caixa_de_entrada",
+  );
   const [impacto, setImpacto] = useState<string>(ideia?.impacto ?? "medio");
   const [esforco, setEsforco] = useState<string>(ideia?.esforco ?? "medio");
 
@@ -149,6 +253,7 @@ export function IdeiaModal({ ideia, onClose }: Props) {
   }, [state, close]);
 
   const show = mounted && !closing;
+  const convertida = ideia?.convertida_em_tipo ?? null;
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
@@ -181,125 +286,148 @@ export function IdeiaModal({ ideia, onClose }: Props) {
           </button>
         </header>
 
-        <form
-          action={formAction}
-          className="flex-1 overflow-y-auto p-5"
-          noValidate
-        >
-          <input type="hidden" name="status" value={status} />
-          <input type="hidden" name="impacto" value={impacto} />
-          <input type="hidden" name="esforco" value={esforco} />
+        <div className="flex-1 overflow-y-auto p-5">
+          <form action={formAction} noValidate>
+            <input type="hidden" name="status" value={status} />
+            <input type="hidden" name="impacto" value={impacto} />
+            <input type="hidden" name="esforco" value={esforco} />
 
-          {state.error && (
-            <p
-              role="alert"
-              className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
-            >
-              {state.error}
-            </p>
-          )}
+            {state.error && (
+              <p
+                role="alert"
+                className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+              >
+                {state.error}
+              </p>
+            )}
 
-          <div className="grid gap-6 md:grid-cols-[1fr_260px]">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="titulo" className={labelClass}>
-                  Título <span className="text-[#B97059]">*</span>
-                </label>
-                <input
-                  id="titulo"
-                  name="titulo"
-                  type="text"
-                  required
-                  maxLength={200}
-                  autoFocus
-                  defaultValue={ideia?.titulo ?? ""}
-                  className={fieldClass}
-                />
-                {state.fieldErrors?.titulo && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {state.fieldErrors.titulo}
-                  </p>
-                )}
-              </div>
+            <div className="grid gap-6 md:grid-cols-[1fr_260px]">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="titulo" className={labelClass}>
+                    Título <span className="text-[#B97059]">*</span>
+                  </label>
+                  <input
+                    id="titulo"
+                    name="titulo"
+                    type="text"
+                    required
+                    maxLength={200}
+                    autoFocus
+                    defaultValue={ideia?.titulo ?? ""}
+                    className={fieldClass}
+                  />
+                  {state.fieldErrors?.titulo && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {state.fieldErrors.titulo}
+                    </p>
+                  )}
+                </div>
 
-              <div>
-                <label htmlFor="descricao" className={labelClass}>
-                  Descrição
-                </label>
-                <textarea
-                  id="descricao"
-                  name="descricao"
-                  rows={6}
-                  defaultValue={ideia?.descricao ?? ""}
-                  className={fieldClass}
-                />
-              </div>
+                <div>
+                  <label htmlFor="descricao" className={labelClass}>
+                    Descrição
+                  </label>
+                  <textarea
+                    id="descricao"
+                    name="descricao"
+                    rows={6}
+                    defaultValue={ideia?.descricao ?? ""}
+                    className={fieldClass}
+                  />
+                </div>
 
-              <div>
-                <label htmlFor="categoria" className={labelClass}>
-                  Categoria
-                </label>
-                <input
-                  id="categoria"
-                  name="categoria"
-                  type="text"
-                  maxLength={80}
-                  defaultValue={ideia?.categoria ?? ""}
-                  placeholder="Ex.: Produto, Marketing, Processo"
-                  className={fieldClass}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <div>
-                <span className={labelClass}>Status</span>
-                <div className="mt-1.5 space-y-1.5">
-                  {STATUS_OPTIONS.map((option) => {
-                    const ativo = status === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setStatus(option.value)}
-                        aria-pressed={ativo}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
-                          ativo
-                            ? "border-[#24483F] bg-[#24483F] text-white"
-                            : "border-black/10 bg-white text-[#2D3230] hover:border-[#24483F]/40"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                <div>
+                  <label htmlFor="categoria" className={labelClass}>
+                    Categoria
+                  </label>
+                  <select
+                    id="categoria"
+                    name="categoria"
+                    defaultValue={ideia?.categoria ?? ""}
+                    className={fieldClass}
+                  >
+                    <option value="">Sem categoria</option>
+                    {CATEGORIA_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {state.fieldErrors?.categoria && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {state.fieldErrors.categoria}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <NivelToggle
-                label="Impacto"
-                value={impacto}
-                onChange={setImpacto}
-              />
-              <NivelToggle
-                label="Esforço"
-                value={esforco}
-                onChange={setEsforco}
-              />
-            </div>
-          </div>
+              <div className="space-y-5">
+                <div>
+                  <span className={labelClass}>Status</span>
+                  <div className="mt-1.5 space-y-1.5">
+                    {STATUS_OPTIONS.map((option) => {
+                      const ativo = status === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setStatus(option.value)}
+                          aria-pressed={ativo}
+                          className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                            ativo
+                              ? "border-[#24483F] bg-[#24483F] text-white"
+                              : "border-black/10 bg-white text-[#2D3230] hover:border-[#24483F]/40"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          <div className="mt-6 flex items-center gap-3 border-t border-black/5 pt-4">
-            <SubmitButton label={ideia ? "Salvar alterações" : "Criar ideia"} />
-            <button
-              type="button"
-              onClick={close}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-white"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+                <NivelToggle
+                  label="Impacto"
+                  value={impacto}
+                  onChange={setImpacto}
+                />
+                <NivelToggle
+                  label="Esforço"
+                  value={esforco}
+                  onChange={setEsforco}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3 border-t border-black/5 pt-4">
+              <SubmitButton label={ideia ? "Salvar alterações" : "Criar ideia"} />
+              <button
+                type="button"
+                onClick={close}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-white"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+
+          {ideia && (
+            <div className="mt-4 border-t border-black/5 pt-4">
+              {convertida ? (
+                <p className="inline-flex items-center gap-1.5 rounded-lg border border-[#24483F]/20 bg-[#24483F]/5 px-3 py-1.5 text-xs text-[#24483F]">
+                  <span aria-hidden>↳</span>
+                  Originou {CONVERSAO_LABEL[convertida]}
+                  {ideia.convertida_em_titulo
+                    ? `: ${ideia.convertida_em_titulo}`
+                    : ""}
+                </p>
+              ) : (
+                <ConverterControl ideiaId={ideia.id} onDone={close} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -5,16 +5,18 @@ import { useFormState, useFormStatus } from "react-dom";
 import {
   arquivarIdeia,
   excluirIdeia,
+  type ConvertivelTipo,
   type FormState,
   type Ideia,
 } from "../actions";
 import { IdeiaModal } from "./IdeiaModal";
+import { QuickIdeiaModal } from "./QuickIdeiaModal";
 
 const STATUS_OPTIONS = [
-  { value: "nova", label: "Nova" },
-  { value: "em_analise", label: "Em análise" },
+  { value: "caixa_de_entrada", label: "Caixa de entrada" },
+  { value: "analisando", label: "Analisando" },
+  { value: "talvez", label: "Talvez" },
   { value: "aprovada", label: "Aprovada" },
-  { value: "implementada", label: "Implementada" },
   { value: "descartada", label: "Descartada" },
 ] as const;
 
@@ -25,11 +27,18 @@ const NIVEL_OPTIONS = [
 ] as const;
 
 const STATUS_BADGE: Record<string, string> = {
-  nova: "bg-[#E3BD62]/25 text-[#2D3230]",
-  em_analise: "bg-[#B97059]/15 text-[#B97059]",
+  caixa_de_entrada: "bg-[#E3BD62]/25 text-[#2D3230]",
+  analisando: "bg-[#B97059]/15 text-[#B97059]",
+  talvez: "bg-black/5 text-gray-600",
   aprovada: "bg-[#24483F]/10 text-[#24483F]",
-  implementada: "bg-[#24483F] text-white",
   descartada: "bg-gray-100 text-gray-400",
+};
+
+const CONVERSAO_LABEL: Record<ConvertivelTipo, string> = {
+  projeto: "Projeto",
+  produto: "Produto",
+  evento: "Evento",
+  conteudo: "Conteúdo",
 };
 
 function labelDe(
@@ -67,7 +76,7 @@ function Spinner() {
 export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
   const [statusFiltro, setStatusFiltro] = useState("");
   const [impactoFiltro, setImpactoFiltro] = useState("");
-  const [modalAberto, setModalAberto] = useState(false);
+  const [quickAberto, setQuickAberto] = useState(false);
   const [emEdicao, setEmEdicao] = useState<Ideia | null>(null);
 
   const filtradas = useMemo(
@@ -80,14 +89,8 @@ export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
     [ideias, statusFiltro, impactoFiltro],
   );
 
-  function abrirNova() {
-    setEmEdicao(null);
-    setModalAberto(true);
-  }
-
   function abrirEdicao(ideia: Ideia) {
     setEmEdicao(ideia);
-    setModalAberto(true);
   }
 
   const selectClass =
@@ -106,7 +109,7 @@ export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
         </div>
         <button
           type="button"
-          onClick={abrirNova}
+          onClick={() => setQuickAberto(true)}
           className="rounded-lg bg-[#24483F] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1c3a33]"
         >
           + Nova ideia
@@ -179,8 +182,11 @@ export function IdeiasList({ ideias }: { ideias: Ideia[] }) {
         </ul>
       )}
 
-      {modalAberto && (
-        <IdeiaModal ideia={emEdicao} onClose={() => setModalAberto(false)} />
+      {quickAberto && (
+        <QuickIdeiaModal onClose={() => setQuickAberto(false)} />
+      )}
+      {emEdicao && (
+        <IdeiaModal ideia={emEdicao} onClose={() => setEmEdicao(null)} />
       )}
     </div>
   );
@@ -238,7 +244,8 @@ function IdeiaCard({ ideia, onEdit }: { ideia: Ideia; onEdit: () => void }) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            STATUS_BADGE[ideia.status ?? "nova"] ?? "bg-gray-100 text-gray-600"
+            STATUS_BADGE[ideia.status ?? "caixa_de_entrada"] ??
+            "bg-gray-100 text-gray-600"
           }`}
         >
           {labelDe(STATUS_OPTIONS, ideia.status)}
@@ -261,6 +268,21 @@ function IdeiaCard({ ideia, onEdit }: { ideia: Ideia; onEdit: () => void }) {
           </span>
         )}
       </div>
+
+      {ideia.convertida_em_tipo && (
+        <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-[#24483F]/20 bg-[#24483F]/5 px-2.5 py-1 text-xs text-[#24483F]">
+          <span aria-hidden>↳</span>
+          Originou {CONVERSAO_LABEL[ideia.convertida_em_tipo]}
+          {ideia.convertida_em_titulo ? (
+            <>
+              :{" "}
+              <strong className="font-semibold">
+                {ideia.convertida_em_titulo}
+              </strong>
+            </>
+          ) : null}
+        </div>
+      )}
 
       {danger && (
         <InlineDanger

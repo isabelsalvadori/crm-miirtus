@@ -226,13 +226,17 @@ create table if not exists ideias (
   id uuid primary key default gen_random_uuid(),
   titulo text not null,
   descricao text,
-  -- status: 'nova' | 'em_analise' | 'aprovada' | 'descartada' | 'implementada'
+  -- status: 'caixa_de_entrada' | 'analisando' | 'talvez' | 'aprovada' | 'descartada'
   status text,
+  -- categoria: 'Produto' | 'Conteúdo' | 'Evento' | 'Ferramenta' | 'Campanha' | 'Melhoria' | 'Parceria' | 'Outro'
   categoria text,
   -- impacto: 'baixo' | 'medio' | 'alto'
   impacto text,
   -- esforco: 'baixo' | 'medio' | 'alto'
   esforco text,
+  -- convertida_em_tipo: 'projeto' | 'produto' | 'evento' | 'conteudo' (ideia original preservada)
+  convertida_em_tipo text,
+  convertida_em_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   arquivado_em timestamptz
@@ -584,6 +588,7 @@ create index if not exists idx_tarefas_produto on tarefas (produto_id);
 create index if not exists idx_tarefas_fase on tarefas (fase_id);
 create index if not exists idx_tarefas_responsavel on tarefas (responsavel_id);
 create index if not exists idx_notas_entidade on notas (entidade_tipo, entidade_id);
+create index if not exists idx_ideias_convertida on ideias (convertida_em_tipo, convertida_em_id);
 create index if not exists idx_conteudos_produto on conteudos (produto_id);
 create index if not exists idx_conteudos_projeto on conteudos (projeto_id);
 create index if not exists idx_conteudos_responsavel on conteudos (responsavel_id);

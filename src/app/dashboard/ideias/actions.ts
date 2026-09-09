@@ -4,13 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export type IdeiaStatus =
-  | "nova"
-  | "em_analise"
+  | "caixa_de_entrada"
+  | "analisando"
+  | "talvez"
   | "aprovada"
-  | "implementada"
   | "descartada";
 
 export type IdeiaNivel = "baixo" | "medio" | "alto";
+
+export type ConvertivelTipo = "projeto" | "produto" | "evento" | "conteudo";
 
 export type Ideia = {
   id: string;
@@ -20,6 +22,10 @@ export type Ideia = {
   categoria: string | null;
   impacto: IdeiaNivel | null;
   esforco: IdeiaNivel | null;
+  convertida_em_tipo: ConvertivelTipo | null;
+  convertida_em_id: string | null;
+  /** Título do registro originado — hidratado no server, não persistido. */
+  convertida_em_titulo?: string | null;
   created_at: string;
   updated_at: string | null;
   arquivado_em: string | null;
@@ -32,13 +38,62 @@ export type FormState = {
 };
 
 const STATUS_VALUES: string[] = [
-  "nova",
-  "em_analise",
+  "caixa_de_entrada",
+  "analisando",
+  "talvez",
   "aprovada",
-  "implementada",
   "descartada",
 ];
 const NIVEL_VALUES: string[] = ["baixo", "medio", "alto"];
+const CATEGORIA_VALUES: string[] = [
+  "Produto",
+  "Conteúdo",
+  "Evento",
+  "Ferramenta",
+  "Campanha",
+  "Melhoria",
+  "Parceria",
+  "Outro",
+];
+
+const STATUS_PADRAO = "caixa_de_entrada";
+
+type ConversaoConfig = {
+  tabela: string;
+  registro: (titulo: string) => Record<string, string>;
+  path: string;
+};
+
+const CONVERSAO: Record<ConvertivelTipo, ConversaoConfig> = {
+  projeto: {
+    tabela: "projetos",
+    registro: (titulo) => ({
+      nome: titulo,
+      status: "planejamento",
+      prioridade: "normal",
+    }),
+    path: "/dashboard/projetos",
+  },
+  produto: {
+    tabela: "produtos",
+    registro: (titulo) => ({ nome: titulo, status: "rascunho" }),
+    path: "/dashboard/produtos",
+  },
+  evento: {
+    tabela: "eventos",
+    registro: (titulo) => ({ nome: titulo }),
+    path: "/dashboard/eventos",
+  },
+  conteudo: {
+    tabela: "conteudos",
+    registro: (titulo) => ({ titulo, status: "ideia" }),
+    path: "/dashboard/conteudo",
+  },
+};
+
+function isConvertivelTipo(value: string): value is ConvertivelTipo {
+  return value in CONVERSAO;
+}
 
 function describeDbError(
   error: {
@@ -86,6 +141,9 @@ function parseIdeia(
   if (status && !STATUS_VALUES.includes(status)) {
     fieldErrors.status = "Status inválido.";
   }
+  if (categoria && !CATEGORIA_VALUES.includes(categoria)) {
+    fieldErrors.categoria = "Categoria inválida.";
+  }
   if (impacto && !NIVEL_VALUES.includes(impacto)) {
     fieldErrors.impacto = "Impacto inválido.";
   }
@@ -102,7 +160,7 @@ function parseIdeia(
       titulo,
       descricao: descricao || null,
       categoria: categoria || null,
-      status: status || "nova",
+      status: status || STATUS_PADRAO,
       impacto: impacto || "medio",
       esforco: esforco || "medio",
     },
@@ -203,5 +261,63 @@ export async function excluirIdeia(
   }
 
   revalidatePath("/dashboard/ideias");
+  return { ok: true };
+}
+
+export async function converterIdeia(
+  ideiaId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const tipo = String(formData.get("tipo") ?? "").trim();
+  if (!ideiaId) return { ok: false, error: "Ideia inválida." };
+  if (!isConvertivelTipo(tipo)) {
+    return { ok: false, error: "Tipo de conversão inválido." };
+  }
+
+  const supabase = createClient();
+
+  const { data: ideia, error: readError } = await supabase
+    .from("ideias")
+    .select("id, titulo, convertida_em_tipo")
+    .eq("id", ideiaId)
+    .single();
+
+  if (readError || !ideia) {
+    return { ok: false, error: "Ideia não encontrada." };
+  }
+  if (ideia.convertida_em_tipo) {
+    return { ok: false, error: "Esta ideia já foi convertida." };
+  }
+
+  const cfg = CONVERSAO[tipo];
+
+  const { data: criado, error: insertError } = await supabase
+    .from(cfg.tabela)
+    .insert(cfg.registro(ideia.titulo as string))
+    .select("id")
+    .single();
+
+  if (insertError || !criado) {
+    console.error(`Erro ao converter ideia em ${tipo}:`, insertError);
+    return { ok: false, error: describeDbError(insertError) };
+  }
+
+  const { error: updateError } = await supabase
+    .from("ideias")
+    .update({
+      convertida_em_tipo: tipo,
+      convertida_em_id: criado.id as string,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", ideiaId);
+
+  if (updateError) {
+    console.error("Erro ao registrar conversão da ideia:", updateError);
+    return { ok: false, error: describeDbError(updateError) };
+  }
+
+  revalidatePath("/dashboard/ideias");
+  revalidatePath(cfg.path);
   return { ok: true };
 }
