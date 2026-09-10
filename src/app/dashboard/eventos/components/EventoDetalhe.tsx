@@ -26,8 +26,18 @@ import {
   papelLabel,
   participanteStatusLabel,
 } from "../constants";
+import type {
+  TagLite,
+  TarefaHoje,
+  VinculoOpcoes,
+} from "@/app/dashboard/hoje/actions";
 import { EdicaoModal, type EdicaoEdicao } from "./EdicaoModal";
 import { EventoModal, type EventoEdicao } from "./EventoModal";
+import { EventoTarefas } from "./EventoTarefas";
+import {
+  EventoDocumentos,
+  type DocumentoEvento,
+} from "./EventoDocumentos";
 
 const initialState: FormState = {};
 
@@ -445,6 +455,12 @@ type Props = {
   clientes: Option[];
   projetos: Option[];
   colunasEdicao: string[];
+  tarefas: TarefaHoje[];
+  documentos: DocumentoEvento[];
+  tarefaVinculos: VinculoOpcoes;
+  tarefaTags: TagLite[];
+  tarefaColunas: string[];
+  tarefasHabilitadas: boolean;
 };
 
 export function EventoDetalhe({
@@ -454,6 +470,12 @@ export function EventoDetalhe({
   clientes,
   projetos,
   colunasEdicao,
+  tarefas,
+  documentos,
+  tarefaVinculos,
+  tarefaTags,
+  tarefaColunas,
+  tarefasHabilitadas,
 }: Props) {
   const [editEvento, setEditEvento] = useState(false);
   const [edicaoModal, setEdicaoModal] = useState<
@@ -612,8 +634,17 @@ export function EventoDetalhe({
       </section>
 
       <Placeholder titulo="Financeiro" />
-      <Placeholder titulo="Tarefas" />
-      <Placeholder titulo="Documentos" />
+
+      <EventoTarefas
+        eventoId={evento.id}
+        tarefas={tarefas}
+        vinculos={tarefaVinculos}
+        tags={tarefaTags}
+        colunas={tarefaColunas}
+        habilitado={tarefasHabilitadas}
+      />
+
+      <EventoDocumentos eventoId={evento.id} documentos={documentos} />
 
       {editEvento && (
         <EventoModal
@@ -623,7 +654,23 @@ export function EventoDetalhe({
             descricao: evento.descricao,
             tipo: evento.tipo,
             status: evento.status,
+            tipo_formato: evento.tipo_formato,
           }}
+          edicaoUnica={
+            edicoes.length > 0
+              ? {
+                  id: edicoes[0].id,
+                  formato: edicoes[0].formato,
+                  local: edicoes[0].local,
+                  link_transmissao: edicoes[0].link_transmissao,
+                  capacidade: edicoes[0].capacidade,
+                  data_inicio: edicoes[0].data_inicio,
+                  data_fim: edicoes[0].data_fim,
+                  modelo_acesso: edicoes[0].modelo_acesso,
+                  preco: edicoes[0].preco,
+                }
+              : null
+          }
           onClose={() => setEditEvento(false)}
         />
       )}

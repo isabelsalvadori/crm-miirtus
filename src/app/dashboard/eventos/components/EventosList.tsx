@@ -17,8 +17,10 @@ export type EventoCard = {
   nome: string;
   tipo: string | null;
   status: string | null;
+  tipo_formato: string | null;
   total_edicoes: number;
   proxima_edicao: string | null;
+  data_unica: string | null;
 };
 
 export function EventosList({ eventos }: { eventos: EventoCard[] }) {
@@ -139,21 +141,33 @@ export function EventosList({ eventos }: { eventos: EventoCard[] }) {
               </span>
 
               <p className="mt-4 text-sm text-[#2D3230]">
-                {evento.proxima_edicao ? (
+                {evento.tipo_formato === "unico" ? (
+                  evento.data_unica ? (
+                    <strong className="font-semibold">
+                      {formatData(evento.data_unica)}
+                    </strong>
+                  ) : (
+                    <span className="text-gray-400">Sem data definida</span>
+                  )
+                ) : evento.proxima_edicao ? (
                   <>
                     Próxima edição:{" "}
                     <strong className="font-semibold">
                       {formatData(evento.proxima_edicao)}
                     </strong>
                   </>
-                ) : (
+                ) : evento.total_edicoes > 0 ? (
                   <span className="text-gray-400">Sem edições futuras</span>
+                ) : (
+                  <span className="text-gray-400">Sem data definida</span>
                 )}
               </p>
-              <p className="mt-1 text-xs text-gray-400">
-                {evento.total_edicoes}{" "}
-                {evento.total_edicoes === 1 ? "edição" : "edições"}
-              </p>
+              {evento.tipo_formato !== "unico" && (
+                <p className="mt-1 text-xs text-gray-400">
+                  {evento.total_edicoes}{" "}
+                  {evento.total_edicoes === 1 ? "edição" : "edições"}
+                </p>
+              )}
             </Link>
           ))}
         </div>

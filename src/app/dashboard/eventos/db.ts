@@ -31,6 +31,21 @@ export async function detectarColunasEdicao(
   );
 }
 
+/**
+ * `eventos.tipo_formato` veio na migração 0008 e pode não existir ainda.
+ * É detectada em runtime; quando ausente, o módulo trata todos os eventos
+ * como "edicoes" (comportamento anterior).
+ */
+export async function eventoTemTipoFormato(
+  supabase: SupabaseClient,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("eventos")
+    .select("tipo_formato")
+    .limit(1);
+  return !error;
+}
+
 /** Mantém no payload apenas as chaves cujas colunas existem no banco. */
 export function selecionarColunasEdicao(
   cols: Set<string>,

@@ -7,7 +7,14 @@ import {
   criarEvento,
   type FormState,
 } from "../actions";
-import { EVENTO_STATUS_OPTIONS, EVENTO_TIPO_OPTIONS } from "../constants";
+import {
+  EVENTO_FORMATO_OPTIONS,
+  EVENTO_STATUS_OPTIONS,
+  EVENTO_TIPO_OPTIONS,
+  FORMATO_OPTIONS,
+  MODELO_ACESSO_OPTIONS,
+  toDatetimeLocal,
+} from "../constants";
 
 const initialState: FormState = {};
 
@@ -21,6 +28,20 @@ export type EventoEdicao = {
   descricao: string | null;
   tipo: string | null;
   status: string | null;
+  tipo_formato: string | null;
+};
+
+/** Dados da edição única, quando o evento é do tipo "unico". */
+export type EdicaoUnicaLite = {
+  id: string;
+  formato: string | null;
+  local: string | null;
+  link_transmissao: string | null;
+  capacidade: number | null;
+  data_inicio: string | null;
+  data_fim: string | null;
+  modelo_acesso: string | null;
+  preco: number | string | null;
 };
 
 function Spinner() {
@@ -48,12 +69,22 @@ function SubmitButton({ label }: { label: string }) {
 
 type Props = {
   evento: EventoEdicao | null;
+  edicaoUnica?: EdicaoUnicaLite | null;
   onClose: () => void;
 };
 
-export function EventoModal({ evento, onClose }: Props) {
+export function EventoModal({ evento, edicaoUnica, onClose }: Props) {
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [tipoFormato, setTipoFormato] = useState(
+    evento?.tipo_formato ?? "unico",
+  );
+  const [modeloAcesso, setModeloAcesso] = useState(
+    edicaoUnica?.modelo_acesso ?? "gratuito",
+  );
+
+  const localOuLink =
+    edicaoUnica?.link_transmissao || edicaoUnica?.local || "";
 
   const action = useMemo(
     () => (evento ? atualizarEvento.bind(null, evento.id) : criarEvento),
@@ -197,8 +228,158 @@ export function EventoModal({ evento, onClose }: Props) {
                   ))}
                 </select>
               </div>
+
+              <div>
+                <label htmlFor="tipo_formato" className={labelClass}>
+                  Formato do evento
+                </label>
+                <select
+                  id="tipo_formato"
+                  name="tipo_formato"
+                  value={tipoFormato}
+                  onChange={(e) => setTipoFormato(e.target.value)}
+                  className={fieldClass}
+                >
+                  {EVENTO_FORMATO_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  {tipoFormato === "unico"
+                    ? "Data única — uma edição é criada automaticamente com os dados abaixo."
+                    : "Recorrente — as edições são cadastradas separadamente no perfil do evento."}
+                </p>
+              </div>
             </div>
           </div>
+
+          {tipoFormato === "unico" && (
+            <fieldset className="mt-6 rounded-xl border border-black/10 bg-white/60 p-4">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Edição única
+              </legend>
+              <input
+                type="hidden"
+                name="edicao_unica_id"
+                value={edicaoUnica?.id ?? ""}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="data_inicio" className={labelClass}>
+                    Data início
+                  </label>
+                  <input
+                    id="data_inicio"
+                    name="data_inicio"
+                    type="datetime-local"
+                    defaultValue={toDatetimeLocal(edicaoUnica?.data_inicio)}
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="data_fim" className={labelClass}>
+                    Data fim
+                  </label>
+                  <input
+                    id="data_fim"
+                    name="data_fim"
+                    type="datetime-local"
+                    defaultValue={toDatetimeLocal(edicaoUnica?.data_fim)}
+                    className={fieldClass}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="local_ou_link" className={labelClass}>
+                    Local ou link
+                  </label>
+                  <input
+                    id="local_ou_link"
+                    name="local_ou_link"
+                    type="text"
+                    maxLength={500}
+                    defaultValue={localOuLink}
+                    placeholder="Endereço ou URL de transmissão"
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="formato" className={labelClass}>
+                    Formato
+                  </label>
+                  <select
+                    id="formato"
+                    name="formato"
+                    defaultValue={edicaoUnica?.formato ?? "online"}
+                    className={fieldClass}
+                  >
+                    {FORMATO_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  {state.fieldErrors?.formato && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {state.fieldErrors.formato}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="capacidade" className={labelClass}>
+                    Capacidade
+                  </label>
+                  <input
+                    id="capacidade"
+                    name="capacidade"
+                    type="number"
+                    min={0}
+                    defaultValue={edicaoUnica?.capacidade ?? ""}
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="modelo_acesso" className={labelClass}>
+                    Modelo de acesso
+                  </label>
+                  <select
+                    id="modelo_acesso"
+                    name="modelo_acesso"
+                    value={modeloAcesso}
+                    onChange={(e) => setModeloAcesso(e.target.value)}
+                    className={fieldClass}
+                  >
+                    {MODELO_ACESSO_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {modeloAcesso === "pago" && (
+                  <div>
+                    <label htmlFor="preco" className={labelClass}>
+                      Preço (R$)
+                    </label>
+                    <input
+                      id="preco"
+                      name="preco"
+                      type="text"
+                      inputMode="decimal"
+                      defaultValue={
+                        edicaoUnica?.preco != null
+                          ? String(edicaoUnica.preco)
+                          : ""
+                      }
+                      placeholder="0,00"
+                      className={fieldClass}
+                    />
+                  </div>
+                )}
+              </div>
+            </fieldset>
+          )}
 
           <div className="mt-6 flex items-center gap-3 border-t border-black/5 pt-4">
             <SubmitButton label={evento ? "Salvar alterações" : "Criar evento"} />

@@ -21,6 +21,31 @@ export const EVENTO_STATUS_OPTIONS: Opt[] = [
   { value: "arquivado", label: "Arquivado" },
 ];
 
+// Formato do evento (coluna `eventos.tipo_formato`, migração 0008).
+export const EVENTO_FORMATO_OPTIONS: Opt[] = [
+  { value: "unico", label: "Evento único" },
+  { value: "edicoes", label: "Evento com edições" },
+];
+
+// Tipos de documento anexável ao evento (tabela `documentos`).
+export const DOCUMENTO_TIPO_OPTIONS: Opt[] = [
+  { value: "pdf", label: "PDF" },
+  { value: "planilha", label: "Planilha" },
+  { value: "apresentacao", label: "Apresentação" },
+  { value: "imagem", label: "Imagem" },
+  { value: "link", label: "Link" },
+  { value: "outro", label: "Outro" },
+];
+
+export const DOCUMENTO_TIPO_ICONE: Record<string, string> = {
+  pdf: "📄",
+  planilha: "📊",
+  apresentacao: "📽️",
+  imagem: "🖼️",
+  link: "🔗",
+  outro: "📎",
+};
+
 export const EDICAO_STATUS_OPTIONS: Opt[] = [
   { value: "planejada", label: "Planejada" },
   { value: "confirmada", label: "Confirmada" },
@@ -57,6 +82,8 @@ const valores = (opts: Opt[]) => opts.map((o) => o.value);
 
 export const EVENTO_TIPO_VALUES = valores(EVENTO_TIPO_OPTIONS);
 export const EVENTO_STATUS_VALUES = valores(EVENTO_STATUS_OPTIONS);
+export const EVENTO_FORMATO_VALUES = valores(EVENTO_FORMATO_OPTIONS);
+export const DOCUMENTO_TIPO_VALUES = valores(DOCUMENTO_TIPO_OPTIONS);
 export const EDICAO_STATUS_VALUES = valores(EDICAO_STATUS_OPTIONS);
 export const FORMATO_VALUES = valores(FORMATO_OPTIONS);
 export const MODELO_ACESSO_VALUES = valores(MODELO_ACESSO_OPTIONS);
@@ -69,6 +96,10 @@ function label(opts: Opt[], value: string | null | undefined, fallback = "—") 
 
 export const eventoTipoLabel = (v: string | null | undefined) =>
   label(EVENTO_TIPO_OPTIONS, v, "Outro");
+export const eventoFormatoLabel = (v: string | null | undefined) =>
+  label(EVENTO_FORMATO_OPTIONS, v, "Evento com edições");
+export const documentoTipoLabel = (v: string | null | undefined) =>
+  label(DOCUMENTO_TIPO_OPTIONS, v, "Outro");
 export const eventoStatusLabel = (v: string | null | undefined) =>
   label(EVENTO_STATUS_OPTIONS, v, "Ativo");
 export const edicaoStatusLabel = (v: string | null | undefined) =>

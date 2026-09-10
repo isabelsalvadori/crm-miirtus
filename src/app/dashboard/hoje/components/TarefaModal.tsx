@@ -290,6 +290,8 @@ type Props = {
   tags: TagLite[];
   colunas: string[];
   onClose: () => void;
+  /** Vínculos pré-preenchidos ao criar uma tarefa a partir de outro módulo. */
+  eventoIdPadrao?: string;
 };
 
 export function TarefaModal({
@@ -298,6 +300,7 @@ export function TarefaModal({
   tags,
   colunas,
   onClose,
+  eventoIdPadrao,
 }: Props) {
   const editando = Boolean(tarefa);
 
@@ -555,7 +558,9 @@ export function TarefaModal({
                     if (coluna !== "projeto_id" && !colunas.includes(coluna)) {
                       return null;
                     }
-                    const atual = vinculoAtual(tarefa, tipo);
+                    const atual =
+                      vinculoAtual(tarefa, tipo) ||
+                      (!tarefa && tipo === "evento" ? eventoIdPadrao ?? "" : "");
                     return (
                       <div key={tipo}>
                         <label htmlFor={`${tipo}_id`} className={labelClass}>

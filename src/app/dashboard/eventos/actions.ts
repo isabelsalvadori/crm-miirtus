@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  DOCUMENTO_TIPO_VALUES,
   EDICAO_STATUS_VALUES,
+  EVENTO_FORMATO_VALUES,
   EVENTO_STATUS_VALUES,
   EVENTO_TIPO_VALUES,
   FORMATO_VALUES,
@@ -12,7 +14,11 @@ import {
   PAPEL_VALUES,
   PARTICIPANTE_STATUS_VALUES,
 } from "./constants";
-import { detectarColunasEdicao, selecionarColunasEdicao } from "./db";
+import {
+  detectarColunasEdicao,
+  eventoTemTipoFormato,
+  selecionarColunasEdicao,
+} from "./db";
 
 export type FormState = {
   ok?: boolean;
@@ -56,15 +62,48 @@ function revalidarEvento(eventoId?: string | null) {
 // Eventos
 // ============================================================
 
+type EdicaoUnica = {
+  base: Record<string, unknown>;
+  opcionais: Record<string, unknown>;
+};
+
+type EventoParsed = {
+  data: Record<string, unknown>;
+  tipoFormato: string;
+  unica: EdicaoUnica;
+};
+
+/** Campos inline da edição única (só usados quando tipo_formato = 'unico'). */
+function parseEdicaoUnica(fd: FormData): EdicaoUnica {
+  const formato = texto(fd, "formato");
+  const localOuLink = texto(fd, "local_ou_link");
+  const modeloAcesso = texto(fd, "modelo_acesso");
+  const online = formato === "online";
+
+  return {
+    base: {
+      formato: formato || null,
+      local: online ? null : nuloOu(localOuLink),
+      link_transmissao: online ? nuloOu(localOuLink) : null,
+      capacidade: inteiroOuNulo(texto(fd, "capacidade")),
+      data_inicio: nuloOu(texto(fd, "data_inicio")),
+      data_fim: nuloOu(texto(fd, "data_fim")),
+    },
+    opcionais: {
+      modelo_acesso: modeloAcesso || null,
+      preco: modeloAcesso === "pago" ? numeroOuNulo(texto(fd, "preco")) : null,
+    },
+  };
+}
+
 function parseEvento(
   fd: FormData,
-):
-  | { data: Record<string, unknown> }
-  | { fieldErrors: Record<string, string> } {
+): { data: EventoParsed } | { fieldErrors: Record<string, string> } {
   const nome = texto(fd, "nome");
   const descricao = texto(fd, "descricao");
   const tipo = texto(fd, "tipo");
   const status = texto(fd, "status");
+  const tipoFormato = texto(fd, "tipo_formato");
 
   const fieldErrors: Record<string, string> = {};
   if (!nome) fieldErrors.nome = "O nome é obrigatório.";
@@ -74,14 +113,30 @@ function parseEvento(
     fieldErrors.tipo = "Tipo inválido.";
   if (status && !EVENTO_STATUS_VALUES.includes(status))
     fieldErrors.status = "Status inválido.";
+  if (tipoFormato && !EVENTO_FORMATO_VALUES.includes(tipoFormato))
+    fieldErrors.tipo_formato = "Formato inválido.";
+
+  if (tipoFormato === "unico") {
+    const formato = texto(fd, "formato");
+    const modeloAcesso = texto(fd, "modelo_acesso");
+    if (formato && !FORMATO_VALUES.includes(formato))
+      fieldErrors.formato = "Formato inválido.";
+    if (modeloAcesso && !MODELO_ACESSO_VALUES.includes(modeloAcesso))
+      fieldErrors.modelo_acesso = "Modelo de acesso inválido.";
+  }
+
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   return {
     data: {
-      nome,
-      descricao: nuloOu(descricao),
-      tipo: tipo || "outro",
-      status: status || "ativo",
+      data: {
+        nome,
+        descricao: nuloOu(descricao),
+        tipo: tipo || "outro",
+        status: status || "ativo",
+      },
+      tipoFormato: tipoFormato || "edicoes",
+      unica: parseEdicaoUnica(fd),
     },
   };
 }
@@ -94,15 +149,38 @@ export async function criarEvento(
   if ("fieldErrors" in parsed) {
     return { ok: false, error: "Revise os campos.", fieldErrors: parsed.fieldErrors };
   }
+  const { data: dados, tipoFormato, unica } = parsed.data;
 
   const supabase = createClient();
-  const { error } = await supabase.from("eventos").insert(parsed.data);
-  if (error) {
+  const temTipoFormato = await eventoTemTipoFormato(supabase);
+  const insert = temTipoFormato
+    ? { ...dados, tipo_formato: tipoFormato }
+    : dados;
+
+  const { data: novo, error } = await supabase
+    .from("eventos")
+    .insert(insert)
+    .select("id")
+    .single();
+  if (error || !novo) {
     console.error("Erro ao criar evento:", error);
     return { ok: false, error: describeDbError(error) };
   }
 
-  revalidarEvento();
+  if (temTipoFormato && tipoFormato === "unico") {
+    const cols = await detectarColunasEdicao(supabase);
+    const { error: edError } = await supabase.from("edicoes_evento").insert({
+      evento_id: novo.id,
+      numero: 1,
+      status: "planejada",
+      ...unica.base,
+      ...selecionarColunasEdicao(cols, unica.opcionais),
+    });
+    if (edError)
+      console.error("Erro ao criar edição única do evento:", edError);
+  }
+
+  revalidarEvento(novo.id as string);
   return { ok: true };
 }
 
@@ -116,15 +194,42 @@ export async function atualizarEvento(
   if ("fieldErrors" in parsed) {
     return { ok: false, error: "Revise os campos.", fieldErrors: parsed.fieldErrors };
   }
+  const { data: dados, tipoFormato, unica } = parsed.data;
 
   const supabase = createClient();
-  const { error } = await supabase
-    .from("eventos")
-    .update({ ...parsed.data, updated_at: new Date().toISOString() })
-    .eq("id", id);
+  const temTipoFormato = await eventoTemTipoFormato(supabase);
+  const update = {
+    ...dados,
+    ...(temTipoFormato ? { tipo_formato: tipoFormato } : {}),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("eventos").update(update).eq("id", id);
   if (error) {
     console.error("Erro ao atualizar evento:", error);
     return { ok: false, error: describeDbError(error) };
+  }
+
+  if (temTipoFormato && tipoFormato === "unico") {
+    const cols = await detectarColunasEdicao(supabase);
+    const payload = {
+      ...unica.base,
+      ...selecionarColunasEdicao(cols, unica.opcionais),
+    };
+    const edicaoUnicaId = texto(fd, "edicao_unica_id");
+    const { error: edError } = edicaoUnicaId
+      ? await supabase
+          .from("edicoes_evento")
+          .update({ ...payload, updated_at: new Date().toISOString() })
+          .eq("id", edicaoUnicaId)
+      : await supabase.from("edicoes_evento").insert({
+          evento_id: id,
+          numero: 1,
+          status: "planejada",
+          ...payload,
+        });
+    if (edError)
+      console.error("Erro ao salvar edição única do evento:", edError);
   }
 
   revalidarEvento(id);
@@ -404,6 +509,69 @@ export async function atualizarParticipante(
   if (error) {
     console.error("Erro ao atualizar participante:", error);
     return { ok: false, error: describeDbError(error) };
+  }
+
+  revalidarEvento(eventoId);
+  return { ok: true };
+}
+
+// ============================================================
+// Documentos do evento (tabela `documentos`, vínculo polimórfico
+// entidade_tipo = 'evento' / entidade_id = evento.id)
+// ============================================================
+
+export async function criarDocumentoEvento(
+  eventoId: string,
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  if (!eventoId) return { ok: false, error: "Evento inválido." };
+
+  const titulo = texto(fd, "titulo");
+  const url = texto(fd, "url");
+  const tipo = texto(fd, "tipo");
+  const descricao = texto(fd, "descricao");
+
+  const fieldErrors: Record<string, string> = {};
+  if (!titulo) fieldErrors.titulo = "O título é obrigatório.";
+  else if (titulo.length > 200) fieldErrors.titulo = "Título muito longo.";
+  if (!url) fieldErrors.url = "Informe uma URL ou link.";
+  if (tipo && !DOCUMENTO_TIPO_VALUES.includes(tipo))
+    fieldErrors.tipo = "Tipo inválido.";
+  if (Object.keys(fieldErrors).length > 0)
+    return { ok: false, error: "Revise os campos.", fieldErrors };
+
+  const supabase = createClient();
+  const { error } = await supabase.from("documentos").insert({
+    titulo,
+    url,
+    tipo: tipo || "outro",
+    descricao: nuloOu(descricao),
+    entidade_tipo: "evento",
+    entidade_id: eventoId,
+  });
+  if (error) {
+    console.error("Erro ao criar documento do evento:", error);
+    return { ok: false, error: describeDbError(error) };
+  }
+
+  revalidarEvento(eventoId);
+  return { ok: true };
+}
+
+export async function removerDocumentoEvento(
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const id = texto(fd, "id");
+  const eventoId = texto(fd, "evento_id");
+  if (!id) return { ok: false, error: "Documento inválido." };
+
+  const supabase = createClient();
+  const { error } = await supabase.from("documentos").delete().eq("id", id);
+  if (error) {
+    console.error("Erro ao remover documento do evento:", error);
+    return { ok: false, error: "Não foi possível remover. Tente novamente." };
   }
 
   revalidarEvento(eventoId);

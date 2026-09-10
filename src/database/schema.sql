@@ -160,6 +160,8 @@ create table if not exists eventos (
   tipo text,
   status text,
   descricao text,
+  -- tipo_formato: 'unico' (data única, edição gerada automaticamente) | 'edicoes' (recorrente) — migração 0008
+  tipo_formato text default 'edicoes',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   arquivado_em timestamptz
