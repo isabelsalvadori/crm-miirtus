@@ -292,6 +292,12 @@ type Props = {
   onClose: () => void;
   /** Vínculos pré-preenchidos ao criar uma tarefa a partir de outro módulo. */
   eventoIdPadrao?: string;
+  /** Data/horas pré-preenchidas ao criar a partir da Agenda. */
+  agendaDataPadrao?: string;
+  agendaHoraInicioPadrao?: string;
+  agendaHoraFimPadrao?: string;
+  /** Sobrescreve a action de criação (ex.: criarTarefaAgendada). */
+  createAction?: (prev: FormState, fd: FormData) => Promise<FormState>;
 };
 
 export function TarefaModal({
@@ -301,6 +307,10 @@ export function TarefaModal({
   colunas,
   onClose,
   eventoIdPadrao,
+  agendaDataPadrao,
+  agendaHoraInicioPadrao,
+  agendaHoraFimPadrao,
+  createAction,
 }: Props) {
   const editando = Boolean(tarefa);
 
@@ -315,8 +325,11 @@ export function TarefaModal({
   const [novasTags, setNovasTags] = useState<string[]>([]);
 
   const action = useMemo(
-    () => (tarefa ? atualizarTarefa.bind(null, tarefa.id) : criarTarefa),
-    [tarefa],
+    () =>
+      tarefa
+        ? atualizarTarefa.bind(null, tarefa.id)
+        : createAction ?? criarTarefa,
+    [tarefa, createAction],
   );
   const [state, formAction] = useFormState(action, initialState);
 
@@ -529,7 +542,11 @@ export function TarefaModal({
                       name="agenda_data"
                       type="date"
                       aria-label="Data da agenda"
-                      defaultValue={tarefa?.agenda_data?.slice(0, 10) ?? ""}
+                      defaultValue={
+                        tarefa?.agenda_data?.slice(0, 10) ??
+                        agendaDataPadrao ??
+                        ""
+                      }
                       className={fieldClass}
                     />
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -538,7 +555,9 @@ export function TarefaModal({
                         type="time"
                         aria-label="Hora de início"
                         defaultValue={
-                          tarefa?.agenda_hora_inicio?.slice(0, 5) ?? ""
+                          tarefa?.agenda_hora_inicio?.slice(0, 5) ??
+                          agendaHoraInicioPadrao ??
+                          ""
                         }
                         className={fieldClass}
                       />
@@ -546,7 +565,11 @@ export function TarefaModal({
                         name="agenda_hora_fim"
                         type="time"
                         aria-label="Hora de fim"
-                        defaultValue={tarefa?.agenda_hora_fim?.slice(0, 5) ?? ""}
+                        defaultValue={
+                          tarefa?.agenda_hora_fim?.slice(0, 5) ??
+                          agendaHoraFimPadrao ??
+                          ""
+                        }
                         className={fieldClass}
                       />
                     </div>
