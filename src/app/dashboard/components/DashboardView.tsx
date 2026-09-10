@@ -12,6 +12,7 @@ import type {
 } from "./inicio-types";
 
 const CONCLUIDA = "concluida";
+const EMOJIS_SAUDACAO = ["🌻", "🌟", "🦁", "🦅"];
 const FASE_FEITA = new Set(["concluida", "concluido", "encerrada", "cancelada"]);
 
 // ------------------------------------------------------------
@@ -221,6 +222,11 @@ export function DashboardView({ data }: { data: DashboardData }) {
   const hoje = data.hoje;
   const agoraMs = Date.now();
 
+  const emojiSaudacao = useMemo(
+    () => EMOJIS_SAUDACAO[Math.floor(Math.random() * EMOJIS_SAUDACAO.length)],
+    [],
+  );
+
   const derivado = useMemo(() => {
     const { inicio: mesIni, fim: mesFim, prevInicio } = limitesMes(hoje);
     const em7 = addDias(hoje, 7);
@@ -328,7 +334,8 @@ export function DashboardView({ data }: { data: DashboardData }) {
       {/* Header */}
       <header>
         <h1 className="text-2xl font-semibold text-[#24483F]">
-          {saudacao(data.hora)}, Isabel 🌿
+          {saudacao(data.hora)}, Isabel{" "}
+          <span suppressHydrationWarning>{emojiSaudacao}</span>
         </h1>
         <p className="mt-1 text-sm text-gray-500">{dataPorExtenso(hoje)}</p>
       </header>

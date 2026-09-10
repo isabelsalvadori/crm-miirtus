@@ -18,7 +18,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
         <Image
-          src="/images/monograma.png"
+          src="/images/monograma-escuro.png"
           alt="MIIRTUS"
           width={36}
           height={36}
