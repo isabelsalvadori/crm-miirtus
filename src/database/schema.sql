@@ -467,6 +467,8 @@ create table if not exists metas (
   periodo_fim date,
   status text,
   projeto_id uuid references projetos (id) on delete set null,
+  produto_id uuid references produtos (id) on delete set null,
+  evento_id uuid references eventos (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   arquivado_em timestamptz
@@ -626,6 +628,8 @@ create index if not exists idx_orcamentos_projeto on orcamentos (projeto_id);
 create index if not exists idx_orcamentos_campanha on orcamentos (campanha_id);
 create index if not exists idx_orcamentos_categoria on orcamentos (categoria_id);
 create index if not exists idx_metas_projeto on metas (projeto_id);
+create index if not exists idx_metas_produto on metas (produto_id);
+create index if not exists idx_metas_evento on metas (evento_id);
 create index if not exists idx_documentos_pessoa on documentos (pessoa_id);
 create index if not exists idx_documentos_projeto on documentos (projeto_id);
 create index if not exists idx_documentos_entidade on documentos (entidade_tipo, entidade_id);

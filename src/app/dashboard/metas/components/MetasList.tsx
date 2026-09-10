@@ -211,13 +211,12 @@ function MetaCardView({
 
 type Props = {
   metas: MetaCard[];
-  colunas: string[];
   projetos: OptionLite[];
   produtos: OptionLite[];
   eventos: OptionLite[];
 };
 
-export function MetasList({ metas, colunas, projetos, produtos, eventos }: Props) {
+export function MetasList({ metas, projetos, produtos, eventos }: Props) {
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("");
   const [modal, setModal] = useState<
@@ -323,7 +322,6 @@ export function MetasList({ metas, colunas, projetos, produtos, eventos }: Props
       {modal && (
         <MetaModal
           meta={modal.modo === "edit" ? modal.meta : null}
-          colunas={colunas}
           projetos={projetos}
           produtos={produtos}
           eventos={eventos}

@@ -23,9 +23,19 @@ function nuloOu(valor: string): string | null {
   return valor ? valor : null;
 }
 
+/**
+ * Converte entrada numérica em número, aceitando formato pt-BR e "en":
+ *   "5.000,00" -> 5000    "5000,5" -> 5000.5    "5000.50" -> 5000.5
+ * Regra: se há vírgula, ela é o separador decimal e os pontos são de
+ * milhar; sem vírgula, um ponto é tratado como separador decimal.
+ */
 function numeroOuNulo(valor: string): number | null {
   if (!valor) return null;
-  const n = Number(valor.replace(/\s/g, "").replace(",", "."));
+  let s = valor.replace(/\s/g, "");
+  if (s.includes(",")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  const n = Number(s);
   return Number.isNaN(n) ? null : n;
 }
 

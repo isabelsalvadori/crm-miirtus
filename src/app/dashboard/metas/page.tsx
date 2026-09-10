@@ -136,7 +136,6 @@ export default async function MetasPage() {
       ) : (
         <MetasList
           metas={cards}
-          colunas={Array.from(cols)}
           projetos={projetos}
           produtos={produtos}
           eventos={eventos}

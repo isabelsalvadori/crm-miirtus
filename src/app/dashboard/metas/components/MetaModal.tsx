@@ -166,16 +166,36 @@ function DangerBloco({
 
 type Props = {
   meta: MetaCard | null;
-  colunas: string[];
   projetos: OptionLite[];
   produtos: OptionLite[];
   eventos: OptionLite[];
   onClose: () => void;
 };
 
+/** Config do vínculo dinâmico exibido conforme o tipo da meta. */
+const VINCULO_POR_TIPO: Record<
+  string,
+  { campo: "produto_id" | "projeto_id" | "evento_id"; label: string; geral: string }
+> = {
+  produto: {
+    campo: "produto_id",
+    label: "Produto específico",
+    geral: "Meta geral — todos os produtos",
+  },
+  projeto: {
+    campo: "projeto_id",
+    label: "Projeto específico",
+    geral: "Meta geral — todos os projetos",
+  },
+  evento: {
+    campo: "evento_id",
+    label: "Evento específico",
+    geral: "Meta geral — todos os eventos",
+  },
+};
+
 export function MetaModal({
   meta,
-  colunas,
   projetos,
   produtos,
   eventos,
@@ -184,9 +204,6 @@ export function MetaModal({
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
   const [tipo, setTipo] = useState(meta?.tipo ?? "corporativa");
-
-  const temProduto = colunas.includes("produto_id");
-  const temEvento = colunas.includes("evento_id");
 
   const action = useMemo(
     () => (meta ? atualizarMeta.bind(null, meta.id) : criarMeta),
@@ -367,6 +384,43 @@ export function MetaModal({
                 </select>
               </div>
 
+              {VINCULO_POR_TIPO[tipo] &&
+                (() => {
+                  const cfg = VINCULO_POR_TIPO[tipo];
+                  const opcoes =
+                    cfg.campo === "produto_id"
+                      ? produtos
+                      : cfg.campo === "projeto_id"
+                        ? projetos
+                        : eventos;
+                  const atual =
+                    cfg.campo === "produto_id"
+                      ? meta?.produto_id
+                      : cfg.campo === "projeto_id"
+                        ? meta?.projeto_id
+                        : meta?.evento_id;
+                  return (
+                    <div key={cfg.campo}>
+                      <label htmlFor={cfg.campo} className={labelClass}>
+                        {cfg.label}
+                      </label>
+                      <select
+                        id={cfg.campo}
+                        name={cfg.campo}
+                        defaultValue={atual ?? ""}
+                        className={fieldClass}
+                      >
+                        <option value="">{cfg.geral}</option>
+                        {opcoes.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+
               <div>
                 <label htmlFor="unidade" className={labelClass}>
                   Unidade
@@ -397,7 +451,7 @@ export function MetaModal({
                   defaultValue={
                     meta?.valor_alvo != null ? String(meta.valor_alvo) : ""
                   }
-                  placeholder="0"
+                  placeholder="0,00"
                   className={fieldClass}
                 />
                 {state.fieldErrors?.valor_alvo && (
@@ -425,66 +479,6 @@ export function MetaModal({
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="projeto_id" className={labelClass}>
-                  Projeto (opcional)
-                </label>
-                <select
-                  id="projeto_id"
-                  name="projeto_id"
-                  defaultValue={meta?.projeto_id ?? ""}
-                  className={fieldClass}
-                >
-                  <option value="">Sem vínculo</option>
-                  {projetos.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {temProduto && (
-                <div>
-                  <label htmlFor="produto_id" className={labelClass}>
-                    Produto (opcional)
-                  </label>
-                  <select
-                    id="produto_id"
-                    name="produto_id"
-                    defaultValue={meta?.produto_id ?? ""}
-                    className={fieldClass}
-                  >
-                    <option value="">Sem vínculo</option>
-                    {produtos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {temEvento && (
-                <div>
-                  <label htmlFor="evento_id" className={labelClass}>
-                    Evento (opcional)
-                  </label>
-                  <select
-                    id="evento_id"
-                    name="evento_id"
-                    defaultValue={meta?.evento_id ?? ""}
-                    className={fieldClass}
-                  >
-                    <option value="">Sem vínculo</option>
-                    {eventos.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
           </div>
 
