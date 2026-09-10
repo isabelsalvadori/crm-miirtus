@@ -9,7 +9,6 @@ import {
   FileText,
   Folder,
   Home,
-  Image,
   Lightbulb,
   Megaphone,
   Package,
@@ -63,8 +62,7 @@ export const navGroups: NavGroup[] = [
   {
     title: "Marketing",
     items: [
-      { label: "Conteúdo", href: "/dashboard/conteudo", icon: Image },
-      { label: "Campanhas", href: "/dashboard/campanhas", icon: Megaphone },
+      { label: "Marketing", href: "/dashboard/marketing", icon: Megaphone },
     ],
   },
   {
