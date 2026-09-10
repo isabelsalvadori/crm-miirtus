@@ -1,3 +1,4 @@
+import type { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { AnalyticsView } from "./components/AnalyticsView";
 import type {
@@ -11,64 +12,103 @@ import type {
 const num = (v: unknown): number | null =>
   v == null || v === "" ? null : Number(v);
 
+type QueryLike<T> = PromiseLike<{
+  data: T[] | null;
+  error: PostgrestError | null;
+}>;
+
+/**
+ * Executa uma query isoladamente: se falhar, loga o erro específico e
+ * devolve uma lista vazia — nunca deixa uma fonte quebrar a página toda.
+ */
+async function carregar<T>(
+  rotulo: string,
+  query: QueryLike<T>,
+  falhas: string[],
+): Promise<T[]> {
+  try {
+    const { data, error } = await query;
+    if (error) {
+      console.error(
+        `[Analytics] Falha ao carregar "${rotulo}":`,
+        error.message,
+        error.details ?? "",
+        error.hint ?? "",
+        error.code ? `(${error.code})` : "",
+      );
+      falhas.push(rotulo);
+      return [];
+    }
+    return data ?? [];
+  } catch (e) {
+    console.error(`[Analytics] Exceção ao carregar "${rotulo}":`, e);
+    falhas.push(rotulo);
+    return [];
+  }
+}
+
 export default async function AnalyticsPage() {
   const supabase = createClient();
+  const falhas: string[] = [];
 
-  const [movRes, produtosRes, projetosRes, campanhasRes, conteudosRes, metasRes] =
+  const [movRows, produtosRows, projetosRows, campanhasRows, conteudosRows, metasRows] =
     await Promise.all([
-      supabase
-        .from("movimentacoes_financeiras")
-        .select(
-          "id, tipo, valor, status, data_competencia, data_pagamento, produto_id, projeto_id",
-        )
-        .is("arquivado_em", null),
-      supabase
-        .from("produtos")
-        .select("id, nome")
-        .is("arquivado_em", null)
-        .order("nome"),
-      supabase
-        .from("projetos")
-        .select("id, nome")
-        .is("arquivado_em", null)
-        .order("nome"),
-      supabase.from("campanhas").select("*").is("arquivado_em", null),
-      supabase
-        .from("conteudos")
-        .select(
-          "id, canal, status, created_at, data_publicacao, produto_id, projeto_id",
-        )
-        .is("arquivado_em", null),
-      supabase
-        .from("metas")
-        .select(
-          "id, nome, tipo, unidade, valor_alvo, valor_atual, status, periodo_inicio, periodo_fim, produto_id, projeto_id",
-        )
-        .is("arquivado_em", null),
+      carregar<Record<string, unknown>>(
+        "movimentações financeiras",
+        supabase
+          .from("movimentacoes_financeiras")
+          .select(
+            "id, tipo, valor, status, data_competencia, data_pagamento, produto_id, projeto_id",
+          )
+          .is("arquivado_em", null),
+        falhas,
+      ),
+      carregar<OptionLite>(
+        "produtos",
+        supabase
+          .from("produtos")
+          .select("id, nome")
+          .is("arquivado_em", null)
+          .order("nome"),
+        falhas,
+      ),
+      carregar<OptionLite>(
+        "projetos",
+        supabase
+          .from("projetos")
+          .select("id, nome")
+          .is("arquivado_em", null)
+          .order("nome"),
+        falhas,
+      ),
+      carregar<Record<string, unknown>>(
+        "campanhas",
+        supabase.from("campanhas").select("*").is("arquivado_em", null),
+        falhas,
+      ),
+      carregar<Record<string, unknown>>(
+        "conteúdos",
+        supabase
+          .from("conteudos")
+          .select(
+            "id, canal, status, created_at, data_publicacao, produto_id, projeto_id",
+          )
+          .is("arquivado_em", null),
+        falhas,
+      ),
+      carregar<Record<string, unknown>>(
+        "metas",
+        supabase
+          .from("metas")
+          .select(
+            "id, nome, tipo, unidade, valor_alvo, valor_atual, status, periodo_inicio, periodo_fim, produto_id, projeto_id",
+          )
+          .is("arquivado_em", null),
+        falhas,
+      ),
     ]);
 
-  const erro =
-    movRes.error ||
-    produtosRes.error ||
-    projetosRes.error ||
-    campanhasRes.error ||
-    conteudosRes.error ||
-    metasRes.error;
-
-  if (erro) {
-    console.error("Erro ao carregar Analytics:", erro);
-    return (
-      <div className="mx-auto max-w-6xl">
-        <div className="rounded-xl border border-black/5 bg-white p-6 text-sm text-red-600 shadow-sm">
-          Não foi possível carregar os dados de Analytics. Recarregue a página.
-        </div>
-      </div>
-    );
-  }
-
-  const movimentacoes: MovAnalytics[] = (
-    (movRes.data ?? []) as Record<string, unknown>[]
-  ).map((r) => ({
+  const movimentacoes: MovAnalytics[] = movRows.map((r) => ({
     id: r.id as string,
     tipo: (r.tipo as string | null) ?? null,
     valor: Number(r.valor) || 0,
@@ -79,9 +119,7 @@ export default async function AnalyticsPage() {
     projeto_id: (r.projeto_id as string | null) ?? null,
   }));
 
-  const campanhas: CampanhaAnalytics[] = (
-    (campanhasRes.data ?? []) as Record<string, unknown>[]
-  ).map((r) => ({
+  const campanhas: CampanhaAnalytics[] = campanhasRows.map((r) => ({
     id: r.id as string,
     nome: (r.nome as string) ?? "(sem nome)",
     status: (r.status as string | null) ?? null,
@@ -93,9 +131,7 @@ export default async function AnalyticsPage() {
     projeto_id: (r.projeto_id as string | null) ?? null,
   }));
 
-  const conteudos: ConteudoAnalytics[] = (
-    (conteudosRes.data ?? []) as Record<string, unknown>[]
-  ).map((r) => ({
+  const conteudos: ConteudoAnalytics[] = conteudosRows.map((r) => ({
     id: r.id as string,
     canal: (r.canal as string | null) ?? null,
     status: (r.status as string | null) ?? null,
@@ -105,9 +141,7 @@ export default async function AnalyticsPage() {
     projeto_id: (r.projeto_id as string | null) ?? null,
   }));
 
-  const metas: MetaAnalytics[] = (
-    (metasRes.data ?? []) as Record<string, unknown>[]
-  ).map((r) => ({
+  const metas: MetaAnalytics[] = metasRows.map((r) => ({
     id: r.id as string,
     nome: (r.nome as string) ?? "(sem nome)",
     tipo: (r.tipo as string | null) ?? null,
@@ -121,12 +155,24 @@ export default async function AnalyticsPage() {
     projeto_id: (r.projeto_id as string | null) ?? null,
   }));
 
-  const produtos = (produtosRes.data ?? []) as OptionLite[];
-  const projetos = (projetosRes.data ?? []) as OptionLite[];
-
   return (
-    <AnalyticsView
-      data={{ movimentacoes, produtos, projetos, campanhas, conteudos, metas }}
-    />
+    <div className="space-y-4">
+      {falhas.length > 0 && (
+        <div className="mx-auto max-w-6xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Não foi possível carregar: {falhas.join(", ")}. O restante do painel
+          está sendo exibido normalmente.
+        </div>
+      )}
+      <AnalyticsView
+        data={{
+          movimentacoes,
+          produtos: produtosRows,
+          projetos: projetosRows,
+          campanhas,
+          conteudos,
+          metas,
+        }}
+      />
+    </div>
   );
 }
