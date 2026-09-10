@@ -57,46 +57,8 @@ const FILTRO_TIPO_OPCOES = [
   { value: "email", label: "Email" },
 ];
 
-function FiltroLinha({
-  todosLabel,
-  opcoes,
-  valor,
-  onChange,
-}: {
-  todosLabel: string;
-  opcoes: { value: string; label: string }[];
-  valor: string;
-  onChange: (v: string) => void;
-}) {
-  const botao = (ativo: boolean) =>
-    `rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-      ativo
-        ? "border-[#24483F] bg-[#24483F] text-white"
-        : "border-black/10 bg-white text-gray-600 hover:border-[#24483F]/40 hover:text-[#24483F]"
-    }`;
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() => onChange("")}
-        className={botao(valor === "")}
-      >
-        {todosLabel}
-      </button>
-      {opcoes.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={botao(valor === o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+const selectClass =
+  "rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-[#2D3230] outline-none transition focus:border-[#24483F] focus:ring-1 focus:ring-[#24483F]";
 
 type ModalState =
   | { modo: "nova"; status?: string }
@@ -222,19 +184,45 @@ export function ConteudoKanban({
         </button>
       </div>
 
-      <div className="space-y-2">
-        <FiltroLinha
-          todosLabel="Todos os canais"
-          opcoes={FILTRO_CANAL_OPCOES}
-          valor={canalFiltro}
-          onChange={setCanalFiltro}
-        />
-        <FiltroLinha
-          todosLabel="Todos os tipos"
-          opcoes={FILTRO_TIPO_OPCOES}
-          valor={tipoFiltro}
-          onChange={setTipoFiltro}
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <select
+          value={canalFiltro}
+          onChange={(e) => setCanalFiltro(e.target.value)}
+          className={selectClass}
+          aria-label="Filtrar por canal"
+        >
+          <option value="">Todos os canais</option>
+          {FILTRO_CANAL_OPCOES.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={tipoFiltro}
+          onChange={(e) => setTipoFiltro(e.target.value)}
+          className={selectClass}
+          aria-label="Filtrar por tipo"
+        >
+          <option value="">Todos os tipos</option>
+          {FILTRO_TIPO_OPCOES.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        {temFiltro && (
+          <button
+            type="button"
+            onClick={() => {
+              setCanalFiltro("");
+              setTipoFiltro("");
+            }}
+            className="text-sm font-medium text-gray-500 transition-colors hover:text-[#24483F]"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       <DndContext
