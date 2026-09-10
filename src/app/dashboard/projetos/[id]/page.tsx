@@ -15,6 +15,8 @@ import { DangerActions } from "../_components/danger-actions";
 import { FasesSection } from "../_components/fases-section";
 import { ProdutosRelacionados } from "../_components/produtos-relacionados";
 import { Toast } from "../_components/toast";
+import { NotasSecao } from "../../_perfil/NotasSecao";
+import type { NotaLite } from "../../_perfil/types";
 import type { FaseItem, OptionLite } from "../types";
 import { KanbanBoard } from "@/app/dashboard/tarefas/_components/kanban-board";
 import { TarefaModal } from "@/app/dashboard/tarefas/_components/tarefa-modal";
@@ -79,6 +81,15 @@ export default async function ProjetoPerfilPage({
       supabase.from("tags").select("id, nome, cor").order("nome"),
       detectTarefaColumns(supabase),
     ]);
+
+  const { data: notasRaw } = await supabase
+    .from("notas")
+    .select("id, titulo, conteudo, created_at")
+    .eq("entidade_tipo", "projeto")
+    .eq("entidade_id", projeto.id)
+    .is("arquivado_em", null)
+    .order("created_at", { ascending: false });
+  const notas = (notasRaw ?? []) as NotaLite[];
 
   const fases = (fasesRes.data ?? []) as FaseItem[];
   const produtosTodos: OptionLite[] = produtosRes.data ?? [];
@@ -333,9 +344,12 @@ export default async function ProjetoPerfilPage({
         title="Documentos"
         description="Os documentos deste projeto aparecerão aqui."
       />
-      <PlaceholderSection
-        title="Notas"
-        description="As notas deste projeto aparecerão aqui."
+
+      <NotasSecao
+        basePath={`/dashboard/projetos/${projeto.id}`}
+        entidadeTipo="projeto"
+        entidadeId={projeto.id as string}
+        notas={notas}
       />
 
       {/* Ações destrutivas — no fim absoluto da página */}

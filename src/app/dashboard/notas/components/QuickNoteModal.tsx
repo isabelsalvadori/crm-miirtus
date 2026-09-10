@@ -52,13 +52,21 @@ function SubmitButton() {
 export function QuickNoteModal({
   onClose,
   onSuccess,
+  action = criarNota,
+  entidadeTipo,
+  entidadeId,
 }: {
   onClose: () => void;
   onSuccess?: () => void;
+  /** Sobrescreve a action padrão (ex.: criação já vinculada a um perfil). */
+  action?: (prev: FormState, formData: FormData) => Promise<FormState>;
+  /** Preenche entidade_tipo/entidade_id ao salvar (vínculo polimórfico). */
+  entidadeTipo?: string;
+  entidadeId?: string;
 }) {
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [state, formAction] = useFormState(criarNota, initialState);
+  const [state, formAction] = useFormState(action, initialState);
   const savedRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
@@ -122,6 +130,17 @@ export function QuickNoteModal({
         </header>
 
         <form action={formAction} className="space-y-4 p-5" noValidate>
+          {entidadeTipo && (
+            <>
+              <input type="hidden" name="entidade_tipo" value={entidadeTipo} />
+              <input
+                type="hidden"
+                name="entidade_id"
+                value={entidadeId ?? ""}
+              />
+            </>
+          )}
+
           {state.error && (
             <p
               role="alert"

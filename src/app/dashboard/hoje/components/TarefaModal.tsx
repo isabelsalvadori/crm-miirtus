@@ -294,6 +294,8 @@ type Props = {
   onSuccess?: () => void;
   /** Vínculos pré-preenchidos ao criar uma tarefa a partir de outro módulo. */
   eventoIdPadrao?: string;
+  /** Pré-seleção genérica de vínculos ao criar (ex.: perfil de Cliente/Produto). */
+  vinculosPadrao?: Partial<Record<VinculoTipo, string>>;
   /** Data/horas pré-preenchidas ao criar a partir da Agenda. */
   agendaDataPadrao?: string;
   agendaHoraInicioPadrao?: string;
@@ -310,6 +312,7 @@ export function TarefaModal({
   onClose,
   onSuccess,
   eventoIdPadrao,
+  vinculosPadrao,
   agendaDataPadrao,
   agendaHoraInicioPadrao,
   agendaHoraFimPadrao,
@@ -591,7 +594,10 @@ export function TarefaModal({
                     }
                     const atual =
                       vinculoAtual(tarefa, tipo) ||
-                      (!tarefa && tipo === "evento" ? eventoIdPadrao ?? "" : "");
+                      (!tarefa
+                        ? vinculosPadrao?.[tipo] ??
+                          (tipo === "evento" ? eventoIdPadrao ?? "" : "")
+                        : "");
                     return (
                       <div key={tipo}>
                         <label htmlFor={`${tipo}_id`} className={labelClass}>

@@ -10,6 +10,14 @@ import {
 import { StatusBadge } from "../_components/status-badge";
 import { DangerActions } from "../_components/danger-actions";
 import { Toast } from "../_components/toast";
+import { NotasSecao } from "../../_perfil/NotasSecao";
+import { TarefasSecao } from "../../_perfil/TarefasSecao";
+import { HistoricoFinanceiro } from "../../_perfil/HistoricoFinanceiro";
+import type {
+  MovimentacaoLite,
+  NotaLite,
+  TarefaLite,
+} from "../../_perfil/types";
 
 type PerfilPageProps = {
   params: { id: string };
@@ -32,6 +40,43 @@ export default async function ClientePerfilPage({
   if (!cliente) {
     notFound();
   }
+
+  const clienteId = cliente.id as string;
+  const basePath = `/dashboard/clientes/${clienteId}`;
+
+  const [notasRes, tarefasRes, movRes] = await Promise.all([
+    supabase
+      .from("notas")
+      .select("id, titulo, conteudo, created_at")
+      .eq("entidade_tipo", "pessoa")
+      .eq("entidade_id", clienteId)
+      .is("arquivado_em", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("tarefas")
+      .select("id, titulo, status, prioridade, data_prazo")
+      .eq("cliente_id", clienteId)
+      .is("arquivado_em", null)
+      .order("data_prazo", { ascending: true }),
+    supabase
+      .from("movimentacoes_financeiras")
+      .select("id, descricao, tipo, valor, data_competencia")
+      .eq("pessoa_id", clienteId)
+      .is("arquivado_em", null)
+      .order("data_competencia", { ascending: false }),
+  ]);
+
+  const notas = (notasRes.data ?? []) as NotaLite[];
+  const tarefas = (tarefasRes.data ?? []) as TarefaLite[];
+  const movimentacoes = ((movRes.data ?? []) as Record<string, unknown>[]).map(
+    (m): MovimentacaoLite => ({
+      id: m.id as string,
+      descricao: m.descricao as string,
+      tipo: (m.tipo as string | null) ?? null,
+      valor: Number(m.valor) || 0,
+      data_competencia: (m.data_competencia as string | null) ?? null,
+    }),
+  );
 
   const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] ?? null : null;
   const arquivado = Boolean(cliente.arquivado_em);
@@ -123,6 +168,22 @@ export default async function ClientePerfilPage({
         )}
       </div>
 
+      <NotasSecao
+        basePath={basePath}
+        entidadeTipo="pessoa"
+        entidadeId={clienteId}
+        notas={notas}
+      />
+
+      <TarefasSecao
+        basePath={basePath}
+        vinculoTipo="cliente"
+        entidadeId={clienteId}
+        tarefas={tarefas}
+      />
+
+      <HistoricoFinanceiro movimentacoes={movimentacoes} />
+
       {/* Seções futuras */}
       <PlaceholderSection
         title="Linha do tempo"
@@ -131,10 +192,6 @@ export default async function ClientePerfilPage({
       <PlaceholderSection
         title="Produtos"
         description="Os produtos vinculados a este cliente aparecerão aqui."
-      />
-      <PlaceholderSection
-        title="Notas"
-        description="As notas registradas para este cliente aparecerão aqui."
       />
 
       {/* Ações destrutivas — no fim absoluto da página */}

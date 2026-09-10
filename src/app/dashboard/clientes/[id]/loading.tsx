@@ -22,7 +22,7 @@ export default function ClientePerfilLoading() {
         </div>
       </div>
 
-      {Array.from({ length: 3 }).map((_, index) => (
+      {Array.from({ length: 5 }).map((_, index) => (
         <div
           key={index}
           className="rounded-xl border border-black/5 bg-white p-6 shadow-sm"

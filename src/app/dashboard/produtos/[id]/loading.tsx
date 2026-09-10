@@ -22,7 +22,7 @@ export default function ProdutoPerfilLoading() {
         <Skeleton className="mt-6 h-16 w-full" />
       </div>
 
-      {Array.from({ length: 4 }).map((_, index) => (
+      {Array.from({ length: 7 }).map((_, index) => (
         <div
           key={index}
           className="rounded-xl border border-black/5 bg-white p-6 shadow-sm"

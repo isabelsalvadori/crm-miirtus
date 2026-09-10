@@ -2,17 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { TarefaModal } from "@/app/dashboard/hoje/components/TarefaModal";
+import type { FormState, VinculoTipo } from "@/app/dashboard/hoje/actions";
 import {
   type ContextoTarefa,
   carregarContextoTarefa,
 } from "@/app/dashboard/_captura/tarefa-contexto";
 import { type QuickModalProps, QuickModalShell, useQuickModal } from "./shared";
 
+type TarefaModalLoaderProps = QuickModalProps & {
+  /** Pré-seleção de vínculos ao criar (ex.: perfil de Cliente/Produto). */
+  vinculosPadrao?: Partial<Record<VinculoTipo, string>>;
+  /** Sobrescreve a action de criação (ex.: criação vinculada a um perfil). */
+  createAction?: (prev: FormState, fd: FormData) => Promise<FormState>;
+};
+
 /**
  * Carrega os catálogos que o `TarefaModal` exige e só então o renderiza.
  * Enquanto isso mostra um placeholder no mesmo formato dos demais modais.
  */
-export function TarefaModalLoader({ onClose, onSuccess }: QuickModalProps) {
+export function TarefaModalLoader({
+  onClose,
+  onSuccess,
+  vinculosPadrao,
+  createAction,
+}: TarefaModalLoaderProps) {
   const [ctx, setCtx] = useState<ContextoTarefa | null>(null);
   const [erro, setErro] = useState(false);
 
@@ -37,6 +50,8 @@ export function TarefaModalLoader({ onClose, onSuccess }: QuickModalProps) {
         vinculos={ctx.vinculos}
         tags={ctx.tags}
         colunas={ctx.colunas}
+        vinculosPadrao={vinculosPadrao}
+        createAction={createAction}
         onClose={onClose}
         onSuccess={onSuccess}
       />

@@ -12,6 +12,10 @@ import {
 import { StatusBadge } from "../_components/status-badge";
 import { DangerActions } from "../_components/danger-actions";
 import { Toast } from "../_components/toast";
+import { NotasSecao } from "../../_perfil/NotasSecao";
+import { TarefasSecao } from "../../_perfil/TarefasSecao";
+import { MetasVinculadas } from "../../_perfil/MetasVinculadas";
+import type { MetaLite, NotaLite, TarefaLite } from "../../_perfil/types";
 
 type PerfilPageProps = {
   params: { id: string };
@@ -34,6 +38,49 @@ export default async function ProdutoPerfilPage({
   if (!produto) {
     notFound();
   }
+
+  const produtoId = produto.id as string;
+  const basePath = `/dashboard/produtos/${produtoId}`;
+
+  const [notasRes, tarefasRes, metasRes] = await Promise.all([
+    supabase
+      .from("notas")
+      .select("id, titulo, conteudo, created_at")
+      .eq("entidade_tipo", "produto")
+      .eq("entidade_id", produtoId)
+      .is("arquivado_em", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("tarefas")
+      .select("id, titulo, status, prioridade, data_prazo")
+      .eq("produto_id", produtoId)
+      .is("arquivado_em", null)
+      .order("data_prazo", { ascending: true }),
+    supabase
+      .from("metas")
+      .select(
+        "id, nome, tipo, valor_atual, valor_alvo, unidade, periodo_inicio, periodo_fim, status",
+      )
+      .eq("produto_id", produtoId)
+      .is("arquivado_em", null)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const notas = (notasRes.data ?? []) as NotaLite[];
+  const tarefas = (tarefasRes.data ?? []) as TarefaLite[];
+  const metas = ((metasRes.data ?? []) as Record<string, unknown>[]).map(
+    (m): MetaLite => ({
+      id: m.id as string,
+      nome: m.nome as string,
+      tipo: (m.tipo as string | null) ?? null,
+      valor_atual: m.valor_atual == null ? null : Number(m.valor_atual),
+      valor_alvo: m.valor_alvo == null ? null : Number(m.valor_alvo),
+      unidade: (m.unidade as string | null) ?? null,
+      periodo_inicio: (m.periodo_inicio as string | null) ?? null,
+      periodo_fim: (m.periodo_fim as string | null) ?? null,
+      status: (m.status as string | null) ?? null,
+    }),
+  );
 
   const okMessage = searchParams.ok ? OK_MESSAGES[searchParams.ok] ?? null : null;
   const arquivado = Boolean(produto.arquivado_em);
@@ -118,6 +165,22 @@ export default async function ProdutoPerfilPage({
           </div>
         )}
       </div>
+
+      <NotasSecao
+        basePath={basePath}
+        entidadeTipo="produto"
+        entidadeId={produtoId}
+        notas={notas}
+      />
+
+      <TarefasSecao
+        basePath={basePath}
+        vinculoTipo="produto"
+        entidadeId={produtoId}
+        tarefas={tarefas}
+      />
+
+      <MetasVinculadas metas={metas} />
 
       {/* Seções futuras */}
       <PlaceholderSection
