@@ -35,6 +35,69 @@ import { ConteudoModal } from "./ConteudoModal";
 
 type Coluna = { value: string; label: string; itens: ConteudoItem[] };
 
+/** Filtros client-side acima do quadro — ordem/labels definidas pela UI. */
+const FILTRO_CANAL_OPCOES = [
+  { value: "instagram", label: "Instagram" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "facebook", label: "Facebook" },
+  { value: "youtube", label: "YouTube" },
+  { value: "blog", label: "Blog" },
+  { value: "newsletter", label: "Newsletter" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "linkedin", label: "LinkedIn" },
+];
+
+const FILTRO_TIPO_OPCOES = [
+  { value: "post", label: "Post" },
+  { value: "reel", label: "Reel" },
+  { value: "story", label: "Story" },
+  { value: "carrossel", label: "Carrossel" },
+  { value: "video", label: "Vídeo" },
+  { value: "artigo", label: "Artigo" },
+  { value: "email", label: "Email" },
+];
+
+function FiltroLinha({
+  todosLabel,
+  opcoes,
+  valor,
+  onChange,
+}: {
+  todosLabel: string;
+  opcoes: { value: string; label: string }[];
+  valor: string;
+  onChange: (v: string) => void;
+}) {
+  const botao = (ativo: boolean) =>
+    `rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+      ativo
+        ? "border-[#24483F] bg-[#24483F] text-white"
+        : "border-black/10 bg-white text-gray-600 hover:border-[#24483F]/40 hover:text-[#24483F]"
+    }`;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => onChange("")}
+        className={botao(valor === "")}
+      >
+        {todosLabel}
+      </button>
+      {opcoes.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={botao(valor === o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 type ModalState =
   | { modo: "nova"; status?: string }
   | { modo: "edit"; conteudo: ConteudoItem }
@@ -58,6 +121,8 @@ export function ConteudoKanban({
   catalogos: Catalogos;
 }) {
   const [modal, setModal] = useState<ModalState>(null);
+  const [canalFiltro, setCanalFiltro] = useState("");
+  const [tipoFiltro, setTipoFiltro] = useState("");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
@@ -65,21 +130,31 @@ export function ConteudoKanban({
     }),
   );
 
+  const filtrados = useMemo(
+    () =>
+      conteudos.filter(
+        (c) =>
+          (!canalFiltro || c.canal === canalFiltro) &&
+          (!tipoFiltro || c.tipo === tipoFiltro),
+      ),
+    [conteudos, canalFiltro, tipoFiltro],
+  );
+
   const signature = useMemo(
     () =>
-      conteudos
+      filtrados
         .map((c) => `${c.id}:${normalizeConteudoStatus(c.status)}`)
         .join("|"),
-    [conteudos],
+    [filtrados],
   );
-  const [cols, setCols] = useState<Coluna[]>(() => agrupar(conteudos));
+  const [cols, setCols] = useState<Coluna[]>(() => agrupar(filtrados));
   const lastSig = useRef(signature);
   useEffect(() => {
     if (lastSig.current !== signature) {
       lastSig.current = signature;
-      setCols(agrupar(conteudos));
+      setCols(agrupar(filtrados));
     }
-  }, [signature, conteudos]);
+  }, [signature, filtrados]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const activeCard = useMemo(
@@ -127,12 +202,16 @@ export function ConteudoKanban({
   }
 
   const total = conteudos.length;
+  const visiveis = filtrados.length;
+  const temFiltro = Boolean(canalFiltro || tipoFiltro);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
-          {total} {total === 1 ? "conteúdo" : "conteúdos"} no quadro
+          {temFiltro
+            ? `${visiveis} de ${total} ${total === 1 ? "conteúdo" : "conteúdos"}`
+            : `${total} ${total === 1 ? "conteúdo" : "conteúdos"} no quadro`}
         </p>
         <button
           type="button"
@@ -141,6 +220,21 @@ export function ConteudoKanban({
         >
           + Novo Conteúdo
         </button>
+      </div>
+
+      <div className="space-y-2">
+        <FiltroLinha
+          todosLabel="Todos os canais"
+          opcoes={FILTRO_CANAL_OPCOES}
+          valor={canalFiltro}
+          onChange={setCanalFiltro}
+        />
+        <FiltroLinha
+          todosLabel="Todos os tipos"
+          opcoes={FILTRO_TIPO_OPCOES}
+          valor={tipoFiltro}
+          onChange={setTipoFiltro}
+        />
       </div>
 
       <DndContext
