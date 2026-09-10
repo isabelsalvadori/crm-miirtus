@@ -8,6 +8,7 @@ import {
   STATUS_DESPESA_FORM_VALUES,
   STATUS_RECEITA_FORM_VALUES,
   TIPO_VALUES,
+  ymd,
 } from "./constants";
 
 export type FormState = {
@@ -257,6 +258,109 @@ export async function excluirMovimentacao(
   const redirectTo = redirectToFrom(formData);
   revalidarFinanceiro();
   redirect(`${redirectTo}?ok=excluida`);
+}
+
+// ============================================================
+// Captura rápida (FAB) — criação enxuta, sem redirect
+// ============================================================
+
+/**
+ * Resolve a categoria pelo nome (dentro do tipo). Cria uma nova se ainda
+ * não existir. Devolve `null` quando o nome vem vazio ou a criação falha.
+ */
+async function resolverCategoriaId(
+  supabase: ReturnType<typeof createClient>,
+  nome: string,
+  tipo: string,
+): Promise<string | null> {
+  const limpo = nome.trim();
+  if (!limpo) return null;
+
+  const { data: existente } = await supabase
+    .from("categorias_financeiras")
+    .select("id")
+    .eq("tipo", tipo)
+    .ilike("nome", limpo)
+    .is("arquivado_em", null)
+    .limit(1)
+    .maybeSingle();
+  if (existente?.id) return existente.id as string;
+
+  const { data: criada, error } = await supabase
+    .from("categorias_financeiras")
+    .insert({ nome: limpo, tipo })
+    .select("id")
+    .single();
+  if (error) {
+    console.error("Erro ao criar categoria (captura rápida):", error);
+    return null;
+  }
+  return (criada?.id as string) ?? null;
+}
+
+/**
+ * Criação enxuta para a Captura Rápida: descrição, valor, data e categoria
+ * (por nome). Status sempre "previsto"; não redireciona — devolve
+ * `{ ok: true }` para o modal fechar e o toast aparecer.
+ */
+export async function criarMovimentacao(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const tipo = String(formData.get("tipo") ?? "").trim();
+  const descricao = String(formData.get("descricao") ?? "").trim();
+  const valorRaw = String(formData.get("valor") ?? "").trim();
+  const data = toISODate(String(formData.get("data") ?? ""));
+  const categoriaNome = String(formData.get("categoria") ?? "").trim();
+
+  const fieldErrors: Record<string, string> = {};
+
+  if (tipo !== "receita" && tipo !== "despesa") {
+    fieldErrors.tipo = "Tipo inválido.";
+  }
+  if (!descricao) {
+    fieldErrors.descricao = "A descrição é obrigatória.";
+  } else if (descricao.length > 300) {
+    fieldErrors.descricao = "Descrição muito longa.";
+  }
+
+  let valor = 0;
+  if (!valorRaw) {
+    fieldErrors.valor = "O valor é obrigatório.";
+  } else {
+    const parsed = Number(valorRaw.replace(/\s/g, "").replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      fieldErrors.valor = "Informe um valor válido.";
+    } else {
+      valor = Math.round(parsed * 100) / 100;
+    }
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { ok: false, error: "Revise os campos.", fieldErrors };
+  }
+
+  const supabase = createClient();
+  const categoriaId = await resolverCategoriaId(supabase, categoriaNome, tipo);
+  const dataComp = data ?? ymd();
+
+  const { error } = await supabase.from("movimentacoes_financeiras").insert({
+    descricao,
+    tipo,
+    valor,
+    status: "previsto",
+    data_competencia: dataComp,
+    data_vencimento: dataComp,
+    categoria_id: categoriaId,
+  });
+
+  if (error) {
+    console.error("Erro ao criar movimentação (captura rápida):", error);
+    return { ok: false, error: describeDbError(error) };
+  }
+
+  revalidarFinanceiro();
+  return { ok: true };
 }
 
 // ============================================================

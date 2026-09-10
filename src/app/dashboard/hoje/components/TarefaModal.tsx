@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import {
   arquivarTarefa,
@@ -290,6 +290,8 @@ type Props = {
   tags: TagLite[];
   colunas: string[];
   onClose: () => void;
+  /** Chamado quando a tarefa é criada/salva com sucesso (antes de fechar). */
+  onSuccess?: () => void;
   /** Vínculos pré-preenchidos ao criar uma tarefa a partir de outro módulo. */
   eventoIdPadrao?: string;
   /** Data/horas pré-preenchidas ao criar a partir da Agenda. */
@@ -306,6 +308,7 @@ export function TarefaModal({
   tags,
   colunas,
   onClose,
+  onSuccess,
   eventoIdPadrao,
   agendaDataPadrao,
   agendaHoraInicioPadrao,
@@ -332,6 +335,7 @@ export function TarefaModal({
     [tarefa, createAction],
   );
   const [state, formAction] = useFormState(action, initialState);
+  const savedRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -355,8 +359,12 @@ export function TarefaModal({
   }, [close]);
 
   useEffect(() => {
-    if (state.ok) close();
-  }, [state, close]);
+    if (state.ok && !savedRef.current) {
+      savedRef.current = true;
+      onSuccess?.();
+      close();
+    }
+  }, [state, close, onSuccess]);
 
   function toggleTag(id: string) {
     setTagIds((prev) => {

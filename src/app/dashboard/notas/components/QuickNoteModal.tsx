@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { criarNota, type FormState } from "../actions";
 
@@ -49,10 +49,17 @@ function SubmitButton() {
   );
 }
 
-export function QuickNoteModal({ onClose }: { onClose: () => void }) {
+export function QuickNoteModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
   const [state, formAction] = useFormState(criarNota, initialState);
+  const savedRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -76,8 +83,12 @@ export function QuickNoteModal({ onClose }: { onClose: () => void }) {
   }, [close]);
 
   useEffect(() => {
-    if (state.ok) close();
-  }, [state, close]);
+    if (state.ok && !savedRef.current) {
+      savedRef.current = true;
+      onSuccess?.();
+      close();
+    }
+  }, [state, close, onSuccess]);
 
   const show = mounted && !closing;
 

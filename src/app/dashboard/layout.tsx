@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { FAB } from "@/components/layout/FAB";
 
 /**
  * Deriva iniciais a partir do e-mail (parte antes do @).
@@ -37,6 +38,8 @@ export default async function DashboardLayout({
   return (
     <DashboardShell userEmail={email} userInitials={initialsFromEmail(email)}>
       {children}
+      {/* Captura Rápida — botão flutuante global, fora do fluxo do conteúdo. */}
+      <FAB />
     </DashboardShell>
   );
 }
