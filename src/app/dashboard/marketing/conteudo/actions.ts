@@ -7,7 +7,12 @@ import {
   CONTEUDO_STATUS_VALUES,
   CONTEUDO_TIPO_VALUES,
 } from "../constants";
-import { CONTEUDO_COLS, apenasColunas, detectarColunas } from "../db";
+import {
+  CONTEUDO_COLS,
+  apenasColunas,
+  detectarColunas,
+  montarSelect,
+} from "../db";
 
 export type FormState = {
   ok?: boolean;
@@ -146,6 +151,61 @@ export async function moverConteudo(id: string, novoStatus: string) {
     .update({ status: novoStatus, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) console.error("Erro ao mover conteúdo:", error);
+  revalidar();
+}
+
+/**
+ * Duplica um conteúdo: novo registro com os mesmos campos, título
+ * prefixado com "Cópia de ", status forçado para "backlog" e sem
+ * data de publicação nem link publicado.
+ */
+export async function duplicarConteudo(id: string) {
+  if (!id) return;
+  const supabase = createClient();
+  const cols = await detectarColunas(supabase, "conteudos", CONTEUDO_COLS);
+
+  const camposCopiaveis = [
+    "tipo",
+    "canal",
+    "pilar",
+    "resumo",
+    "corpo_roteiro",
+    "produto_id",
+    "projeto_id",
+    "campanha_id",
+    "data_agendada",
+  ] as const;
+
+  const { data: original, error: erroBusca } = await supabase
+    .from("conteudos")
+    .select(montarSelect(["id", "titulo"], cols, camposCopiaveis))
+    .eq("id", id)
+    .single();
+  if (erroBusca || !original) {
+    console.error("Erro ao buscar conteúdo para duplicar:", erroBusca);
+    return;
+  }
+
+  const orig = original as unknown as Record<string, unknown>;
+  const novo: Record<string, unknown> = {
+    titulo: `Cópia de ${String(orig.titulo ?? "").trim()}`.trim(),
+    status: "backlog",
+    data_publicacao: null,
+    link_publicado: null,
+  };
+  for (const campo of camposCopiaveis) {
+    if (campo in orig) novo[campo] = orig[campo];
+  }
+
+  const { error } = await supabase
+    .from("conteudos")
+    .insert(apenasColunas(cols, novo));
+  if (error) {
+    console.error("Erro ao duplicar conteúdo:", error);
+    return;
+  }
+
+  // revalidatePath("/dashboard/marketing/conteudo") + calendário
   revalidar();
 }
 

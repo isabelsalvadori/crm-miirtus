@@ -30,7 +30,7 @@ import {
   textoContraste,
 } from "../../constants";
 import type { Catalogos, ConteudoItem } from "../../types";
-import { moverConteudo } from "../actions";
+import { duplicarConteudo, moverConteudo } from "../actions";
 import { ConteudoModal } from "./ConteudoModal";
 
 type Coluna = { value: string; label: string; itens: ConteudoItem[] };
@@ -239,6 +239,7 @@ export function ConteudoKanban({
               catalogos={catalogos}
               onNova={() => setModal({ modo: "nova", status: col.value })}
               onAbrir={(conteudo) => setModal({ modo: "edit", conteudo })}
+              onDuplicar={(conteudo) => void duplicarConteudo(conteudo.id)}
             />
           ))}
         </div>
@@ -266,11 +267,13 @@ function Column({
   catalogos,
   onNova,
   onAbrir,
+  onDuplicar,
 }: {
   col: Coluna;
   catalogos: Catalogos;
   onNova: () => void;
   onAbrir: (conteudo: ConteudoItem) => void;
+  onDuplicar: (conteudo: ConteudoItem) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.value });
 
@@ -315,6 +318,7 @@ function Column({
                 conteudo={conteudo}
                 catalogos={catalogos}
                 onAbrir={() => onAbrir(conteudo)}
+                onDuplicar={() => onDuplicar(conteudo)}
               />
             ))
           )}
@@ -328,10 +332,12 @@ function SortableCard({
   conteudo,
   catalogos,
   onAbrir,
+  onDuplicar,
 }: {
   conteudo: ConteudoItem;
   catalogos: Catalogos;
   onAbrir: () => void;
+  onDuplicar: () => void;
 }) {
   const {
     attributes,
@@ -355,7 +361,11 @@ function SortableCard({
       onClick={onAbrir}
       className="cursor-pointer touch-none"
     >
-      <Card conteudo={conteudo} catalogos={catalogos} />
+      <Card
+        conteudo={conteudo}
+        catalogos={catalogos}
+        onDuplicar={onDuplicar}
+      />
     </div>
   );
 }
@@ -364,10 +374,12 @@ function Card({
   conteudo,
   catalogos,
   overlay = false,
+  onDuplicar,
 }: {
   conteudo: ConteudoItem;
   catalogos: Catalogos;
   overlay?: boolean;
+  onDuplicar?: () => void;
 }) {
   const cor = canalCor(conteudo.canal);
   const produtoNome =
@@ -377,11 +389,25 @@ function Card({
 
   return (
     <div
-      className={`rounded-lg border border-black/5 bg-white px-3 py-2.5 transition-shadow ${
+      className={`group relative rounded-lg border border-black/5 bg-white px-3 py-2.5 transition-shadow ${
         overlay ? "shadow-lg" : "shadow-sm hover:shadow-md"
       }`}
     >
-      <p className="text-sm font-medium text-gray-900">{conteudo.titulo}</p>
+      {!overlay && onDuplicar && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicar();
+          }}
+          className="absolute right-1.5 top-1.5 rounded-md border border-black/10 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-500 opacity-0 transition-colors hover:border-[#24483F]/40 hover:text-[#24483F] focus-visible:opacity-100 group-hover:opacity-100"
+        >
+          Duplicar
+        </button>
+      )}
+
+      <p className="pr-16 text-sm font-medium text-gray-900">{conteudo.titulo}</p>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {conteudo.tipo && (
